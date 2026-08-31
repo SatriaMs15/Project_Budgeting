@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { unwrap } from "@/lib/supabase/unwrap";
 import { ensureDefaultCategories } from "@/lib/categories";
 import { ImportForm } from "@/components/import-form";
 import {
@@ -12,10 +13,10 @@ export default async function ImportPage() {
   await ensureDefaultCategories();
 
   const supabase = await createClient();
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("*")
-    .order("name");
+  const categories = unwrap(
+    await supabase.from("categories").select("*").order("name"),
+    "load categories",
+  );
 
   return (
     <Card>
@@ -23,7 +24,7 @@ export default async function ImportPage() {
         <CardTitle>Import transactions</CardTitle>
       </CardHeader>
       <CardContent>
-        <ImportForm categories={categories ?? []} />
+        <ImportForm categories={categories} />
       </CardContent>
     </Card>
   );

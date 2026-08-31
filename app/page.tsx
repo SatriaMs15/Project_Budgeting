@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { unwrap } from "@/lib/supabase/unwrap";
 import { ensureDefaultCategories } from "@/lib/categories";
 import { materializeDueRecurring } from "@/lib/recurring";
 import { monthStart, nextMonthStart, monthLabel } from "@/lib/date";
@@ -104,7 +105,7 @@ export default async function Home() {
   });
   const windowStart = `${buckets[0].key}-01`;
 
-  const [{ data: categories }, { data: txns }] = await Promise.all([
+  const [categoriesRes, txnsRes] = await Promise.all([
     supabase.from("categories").select("id, name"),
     supabase
       .from("transactions")
@@ -112,15 +113,17 @@ export default async function Home() {
       .gte("occurred_on", windowStart)
       .lt("occurred_on", nms),
   ]);
+  const categories = unwrap(categoriesRes, "load categories");
+  const txns = unwrap(txnsRes, "load transactions");
 
-  const catName = new Map((categories ?? []).map((c) => [c.id, c.name]));
+  const catName = new Map(categories.map((c) => [c.id, c.name]));
   const bucketByKey = new Map(buckets.map((b) => [b.key, b]));
 
   let monthIncome = 0;
   let monthExpense = 0;
   const catSpend = new Map<string, number>();
 
-  for (const t of txns ?? []) {
+  for (const t of txns) {
     const b = bucketByKey.get(t.occurred_on.slice(0, 7));
     if (b) {
       if (t.kind === "income") b.income += t.amount;
@@ -146,7 +149,7 @@ export default async function Home() {
     .map(([id, amount]) => ({ name: catName.get(id) ?? "Uncategorized", amount }))
     .sort((a, b) => b.amount - a.amount);
 
-  const hasAny = (txns ?? []).length > 0;
+  const hasAny = txns.length > 0;
 
   return (
     <div className="grid gap-6">

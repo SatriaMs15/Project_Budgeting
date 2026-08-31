@@ -8,6 +8,7 @@ import {
   createPartFromText,
 } from "@google/genai";
 import { createClient } from "@/lib/supabase/server";
+import { unwrap } from "@/lib/supabase/unwrap";
 import type { Kind } from "@/lib/supabase/types";
 import { parseCsvTransactions, type ProposedRow } from "@/lib/csv";
 
@@ -86,10 +87,11 @@ export async function extractTransactions(
   }
 
   const supabase = await createClient();
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("name");
-  const categoryNames = (categories ?? []).map((c) => c.name);
+  const categories = unwrap(
+    await supabase.from("categories").select("name"),
+    "load categories",
+  );
+  const categoryNames = categories.map((c) => c.name);
 
   const bytes = Buffer.from(await file.arrayBuffer());
   const csv = isCsvFile(file);

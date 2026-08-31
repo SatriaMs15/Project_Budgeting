@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { assertOk } from "@/lib/supabase/unwrap";
 import type { Frequency, Kind } from "@/lib/supabase/types";
 
 export type RecurringFormState = { error?: string; ts: number };
@@ -51,6 +52,9 @@ export async function addRule(
 export async function deleteRule(formData: FormData) {
   const id = String(formData.get("id"));
   const supabase = await createClient();
-  await supabase.from("recurring_rules").delete().eq("id", id);
+  assertOk(
+    await supabase.from("recurring_rules").delete().eq("id", id),
+    "delete the recurring item",
+  );
   revalidatePath("/recurring");
 }

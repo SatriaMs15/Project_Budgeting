@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { today } from "@/lib/date";
+import { assertOk, unwrap } from "@/lib/supabase/unwrap";
 import type { Frequency } from "@/lib/supabase/types";
 
 function iso(d: Date): string {
@@ -27,13 +28,16 @@ export async function materializeDueRecurring() {
   const supabase = await createClient();
   const todayStr = today();
 
-  const { data: rules } = await supabase
-    .from("recurring_rules")
-    .select("*")
-    .eq("active", true)
-    .lte("next_run_on", todayStr);
+  const rules = unwrap(
+    await supabase
+      .from("recurring_rules")
+      .select("*")
+      .eq("active", true)
+      .lte("next_run_on", todayStr),
+    "load due recurring rules",
+  );
 
-  if (!rules || rules.length === 0) return;
+  if (rules.length === 0) return;
 
   for (const rule of rules) {
     const inserts: {
@@ -59,11 +63,20 @@ export async function materializeDueRecurring() {
     }
 
     if (inserts.length > 0) {
-      await supabase.from("transactions").insert(inserts);
-      await supabase
-        .from("recurring_rules")
-        .update({ next_run_on: next })
-        .eq("id", rule.id);
+      // Insert first, then advance the rule. If the advance fails we must not
+      // swallow it: the rule would stay due and re-insert the same
+      // transactions on the next page load.
+      assertOk(
+        await supabase.from("transactions").insert(inserts),
+        "create transactions from a recurring rule",
+      );
+      assertOk(
+        await supabase
+          .from("recurring_rules")
+          .update({ next_run_on: next })
+          .eq("id", rule.id),
+        "advance a recurring rule",
+      );
     }
   }
 }

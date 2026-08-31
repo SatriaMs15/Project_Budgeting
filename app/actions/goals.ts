@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { assertOk, unwrap } from "@/lib/supabase/unwrap";
 
 export type GoalFormState = { error?: string; ts: number };
 
@@ -39,17 +40,24 @@ export async function contributeToGoal(formData: FormData) {
   if (!id || !Number.isInteger(amount) || amount <= 0) return;
 
   const supabase = await createClient();
-  const { data: goal } = await supabase
-    .from("savings_goals")
-    .select("saved_amount")
-    .eq("id", id)
-    .single();
+  const goal = unwrap(
+    await supabase
+      .from("savings_goals")
+      .select("saved_amount")
+      .eq("id", id)
+      .maybeSingle(),
+    "load the goal",
+  );
+  // Genuinely absent (deleted in another tab) — nothing to contribute to.
   if (!goal) return;
 
-  await supabase
-    .from("savings_goals")
-    .update({ saved_amount: goal.saved_amount + amount })
-    .eq("id", id);
+  assertOk(
+    await supabase
+      .from("savings_goals")
+      .update({ saved_amount: goal.saved_amount + amount })
+      .eq("id", id),
+    "add to the goal",
+  );
 
   revalidatePath("/goals");
 }
@@ -58,6 +66,9 @@ export async function contributeToGoal(formData: FormData) {
 export async function deleteGoal(formData: FormData) {
   const id = String(formData.get("id"));
   const supabase = await createClient();
-  await supabase.from("savings_goals").delete().eq("id", id);
+  assertOk(
+    await supabase.from("savings_goals").delete().eq("id", id),
+    "delete the goal",
+  );
   revalidatePath("/goals");
 }

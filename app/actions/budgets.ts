@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { assertOk } from "@/lib/supabase/unwrap";
 import { monthStart } from "@/lib/date";
 
 /**
@@ -22,20 +23,26 @@ export async function setBudget(formData: FormData) {
   if (!user) return;
 
   if (!Number.isFinite(limit) || limit <= 0) {
-    await supabase
-      .from("budgets")
-      .delete()
-      .eq("category_id", categoryId)
-      .eq("month", month);
+    assertOk(
+      await supabase
+        .from("budgets")
+        .delete()
+        .eq("category_id", categoryId)
+        .eq("month", month),
+      "clear the budget",
+    );
   } else {
-    await supabase.from("budgets").upsert(
-      {
-        user_id: user.id,
-        category_id: categoryId,
-        month,
-        limit_amount: Math.round(limit),
-      },
-      { onConflict: "user_id,category_id,month" },
+    assertOk(
+      await supabase.from("budgets").upsert(
+        {
+          user_id: user.id,
+          category_id: categoryId,
+          month,
+          limit_amount: Math.round(limit),
+        },
+        { onConflict: "user_id,category_id,month" },
+      ),
+      "save the budget",
     );
   }
 

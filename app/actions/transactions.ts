@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { assertOk } from "@/lib/supabase/unwrap";
 import type { Kind } from "@/lib/supabase/types";
 
 export type FormState = { error?: string; ts: number };
@@ -83,7 +84,10 @@ export async function updateTransaction(
 export async function deleteTransaction(formData: FormData) {
   const id = String(formData.get("id"));
   const supabase = await createClient();
-  await supabase.from("transactions").delete().eq("id", id);
+  assertOk(
+    await supabase.from("transactions").delete().eq("id", id),
+    "delete the transaction",
+  );
   revalidatePath("/transactions");
   revalidatePath("/");
 }

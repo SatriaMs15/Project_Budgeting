@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { unwrap } from "@/lib/supabase/unwrap";
 import { ensureDefaultCategories } from "@/lib/categories";
 import { materializeDueRecurring } from "@/lib/recurring";
 import { AddRecurringForm } from "@/components/add-recurring-form";
@@ -15,13 +16,15 @@ export default async function RecurringPage() {
   await materializeDueRecurring();
 
   const supabase = await createClient();
-  const [{ data: categories }, { data: rules }] = await Promise.all([
+  const [categoriesRes, rulesRes] = await Promise.all([
     supabase.from("categories").select("*").order("name"),
     supabase
       .from("recurring_rules")
       .select("*")
       .order("next_run_on", { ascending: true }),
   ]);
+  const categories = unwrap(categoriesRes, "load categories");
+  const rules = unwrap(rulesRes, "load recurring items");
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,340px)_1fr]">
@@ -30,7 +33,7 @@ export default async function RecurringPage() {
           <CardTitle>New recurring item</CardTitle>
         </CardHeader>
         <CardContent>
-          <AddRecurringForm categories={categories ?? []} />
+          <AddRecurringForm categories={categories} />
         </CardContent>
       </Card>
 
@@ -39,7 +42,7 @@ export default async function RecurringPage() {
           <CardTitle>Recurring items</CardTitle>
         </CardHeader>
         <CardContent>
-          <RecurringList rules={rules ?? []} categories={categories ?? []} />
+          <RecurringList rules={rules} categories={categories} />
         </CardContent>
       </Card>
     </div>

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { unwrap } from "@/lib/supabase/unwrap";
 import { ensureDefaultCategories } from "@/lib/categories";
 import { materializeDueRecurring } from "@/lib/recurring";
 import { TransactionForm } from "@/components/transaction-form";
@@ -15,7 +16,7 @@ export default async function TransactionsPage() {
   await materializeDueRecurring();
 
   const supabase = await createClient();
-  const [{ data: categories }, { data: transactions }] = await Promise.all([
+  const [categoriesRes, transactionsRes] = await Promise.all([
     supabase.from("categories").select("*").order("name"),
     supabase
       .from("transactions")
@@ -24,6 +25,8 @@ export default async function TransactionsPage() {
       .order("created_at", { ascending: false })
       .limit(100),
   ]);
+  const categories = unwrap(categoriesRes, "load categories");
+  const transactions = unwrap(transactionsRes, "load transactions");
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,340px)_1fr]">
@@ -32,7 +35,7 @@ export default async function TransactionsPage() {
           <CardTitle>Add transaction</CardTitle>
         </CardHeader>
         <CardContent>
-          <TransactionForm categories={categories ?? []} />
+          <TransactionForm categories={categories} />
         </CardContent>
       </Card>
 
@@ -42,8 +45,8 @@ export default async function TransactionsPage() {
         </CardHeader>
         <CardContent>
           <TransactionList
-            transactions={transactions ?? []}
-            categories={categories ?? []}
+            transactions={transactions}
+            categories={categories}
           />
         </CardContent>
       </Card>

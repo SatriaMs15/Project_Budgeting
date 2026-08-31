@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { unwrap } from "@/lib/supabase/unwrap";
 import { ensureDefaultCategories } from "@/lib/categories";
 import { monthStart, nextMonthStart, monthLabel } from "@/lib/date";
 import { BudgetRow } from "@/components/budget-row";
@@ -18,7 +19,7 @@ export default async function BudgetsPage() {
   const ms = monthStart();
   const nms = nextMonthStart();
 
-  const [{ data: categories }, { data: budgets }, { data: txns }] =
+  const [categoriesRes, budgetsRes, txnsRes] =
     await Promise.all([
       supabase
         .from("categories")
@@ -33,16 +34,19 @@ export default async function BudgetsPage() {
         .gte("occurred_on", ms)
         .lt("occurred_on", nms),
     ]);
+  const categories = unwrap(categoriesRes, "load categories");
+  const budgets = unwrap(budgetsRes, "load budgets");
+  const txns = unwrap(txnsRes, "load this month's spending");
 
-  const limitByCat = new Map((budgets ?? []).map((b) => [b.category_id, b.limit_amount]));
+  const limitByCat = new Map(budgets.map((b) => [b.category_id, b.limit_amount]));
   const spentByCat = new Map<string, number>();
-  for (const t of txns ?? []) {
+  for (const t of txns) {
     if (!t.category_id) continue;
     spentByCat.set(t.category_id, (spentByCat.get(t.category_id) ?? 0) + t.amount);
   }
 
-  const totalBudget = (budgets ?? []).reduce((s, b) => s + b.limit_amount, 0);
-  const totalSpent = (txns ?? []).reduce((s, t) => s + t.amount, 0);
+  const totalBudget = budgets.reduce((s, b) => s + b.limit_amount, 0);
+  const totalSpent = txns.reduce((s, t) => s + t.amount, 0);
 
   return (
     <div className="grid gap-6">
@@ -62,7 +66,7 @@ export default async function BudgetsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="divide-y pt-0">
-          {(categories ?? []).map((c) => (
+          {categories.map((c) => (
             <BudgetRow
               key={c.id}
               category={c}

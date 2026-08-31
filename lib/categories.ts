@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { assertOk } from "@/lib/supabase/unwrap";
 import type { Category } from "@/lib/supabase/types";
 
 /** Categories every new user starts with, so the app is usable immediately. */
@@ -22,12 +23,16 @@ const DEFAULT_CATEGORIES: Pick<Category, "name" | "kind" | "color">[] = [
 export async function ensureDefaultCategories() {
   const supabase = await createClient();
 
-  const { count } = await supabase
+  const countRes = await supabase
     .from("categories")
     .select("*", { count: "exact", head: true });
+  assertOk(countRes, "count categories");
 
-  if ((count ?? 0) > 0) return;
+  if ((countRes.count ?? 0) > 0) return;
 
   // user_id defaults to auth.uid() in the DB, so we don't set it here.
-  await supabase.from("categories").insert(DEFAULT_CATEGORIES);
+  assertOk(
+    await supabase.from("categories").insert(DEFAULT_CATEGORIES),
+    "seed default categories",
+  );
 }
