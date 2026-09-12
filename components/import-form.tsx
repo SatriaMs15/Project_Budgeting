@@ -7,6 +7,7 @@ import { ImportReview } from "@/components/import-review";
 import { Button } from "@/components/ui/button";
 import { CHART } from "@/lib/chart-colors";
 import type { Category } from "@/lib/supabase/types";
+import { MAX_UPLOAD_MB } from "@/lib/upload-limits";
 
 /**
  * Extensions are listed alongside MIME types because browsers are unreliable
@@ -144,8 +145,8 @@ export function ImportForm({ categories }: { categories: Category[] }) {
       </Medallion>
       <p className="mb-1 text-sm font-semibold">Drop a bank statement here</p>
       <p className="mb-3.5 text-[12.5px] text-muted-foreground">
-        CSV, Excel, Word, PDF, or a photo of a receipt — up to 10MB. Nothing is
-        saved until you review it.
+        CSV, Excel, Word, PDF, or a photo of a receipt — up to {MAX_UPLOAD_MB}MB.
+        Nothing is saved until you review it.
       </p>
       <input
         ref={fileRef}

@@ -2,6 +2,29 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
+ * Is this request a browser asking for a page?
+ *
+ * Every cookieless request that reaches the sign-in below creates a REAL,
+ * durable row in auth.users. On a public URL that adds up: asset probes, RSC
+ * payload fetches and 404 scans would each mint an account, burning the
+ * anonymous sign-in rate limit and counting toward Supabase's monthly active
+ * user allowance for nothing.
+ *
+ * A page navigation always asks for text/html. RSC and prefetch requests ask
+ * for text/x-component, and those come from a browser that already holds a
+ * session, so this never costs a real visitor anything — it only skips the
+ * requests that were never going to render a page.
+ *
+ * It does NOT stop a crawler that ignores app/robots.ts, since one of those
+ * asks for HTML like anyone else. Matching on user agent was considered and
+ * rejected: a false positive silently denies a real person a session, which is
+ * a worse failure than an unwanted account.
+ */
+function wantsPage(request: NextRequest): boolean {
+  return (request.headers.get("accept") ?? "").includes("text/html");
+}
+
+/**
  * Refreshes the Supabase session on every request, and — the core of our
  * "no login screen" flow — silently signs the visitor in anonymously the
  * first time they arrive. Each device therefore gets its own private user,
@@ -35,7 +58,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user && wantsPage(request)) {
     const { error } = await supabase.auth.signInAnonymously();
     if (error) {
       // Swallowing this was expensive. With no session, every RLS-protected

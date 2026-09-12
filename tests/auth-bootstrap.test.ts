@@ -33,8 +33,12 @@ vi.mock("next/server", () => ({
 
 const { updateSession } = await import("@/lib/supabase/middleware");
 
-const request = () =>
-  ({ cookies: { getAll: () => [], set: () => {} } }) as never;
+/** A browser asking for a page, unless told otherwise. */
+const request = (accept = "text/html,application/xhtml+xml") =>
+  ({
+    cookies: { getAll: () => [], set: () => {} },
+    headers: { get: (k: string) => (k === "accept" ? accept : null) },
+  }) as never;
 
 let errors: string[];
 
@@ -63,6 +67,45 @@ describe("anonymous session bootstrap", () => {
   it("stays quiet when the sign-in succeeds", async () => {
     await updateSession(request());
     expect(errors).toHaveLength(0);
+  });
+});
+
+describe("only page requests are allowed to mint an account", () => {
+  // Every cookieless request that reaches signInAnonymously creates a real row
+  // in auth.users, which burns the rate limit and counts toward the free tier's
+  // monthly active users.
+
+  it("signs in for a normal page navigation", async () => {
+    await updateSession(request());
+    expect(state.signInCalls).toBe(1);
+  });
+
+  it("does not sign in for an RSC or prefetch request", async () => {
+    await updateSession(request("text/x-component"));
+    expect(state.signInCalls).toBe(0);
+  });
+
+  it("does not sign in for an asset or API probe", async () => {
+    await updateSession(request("*/*"));
+    expect(state.signInCalls).toBe(0);
+    await updateSession(request("application/json"));
+    expect(state.signInCalls).toBe(0);
+  });
+
+  it("does not sign in when the request states no preference at all", async () => {
+    await updateSession(request(""));
+    expect(state.signInCalls).toBe(0);
+  });
+
+  it("still returns a response for a request it skipped", async () => {
+    const res = await updateSession(request("*/*"));
+    expect(res).toBeTruthy();
+  });
+
+  it("never signs in twice for someone who already has a session", async () => {
+    state.user = { id: "u1" };
+    await updateSession(request());
+    expect(state.signInCalls).toBe(0);
   });
 });
 
