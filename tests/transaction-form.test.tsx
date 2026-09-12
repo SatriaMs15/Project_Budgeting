@@ -113,3 +113,48 @@ describe("TransactionForm quick amounts", () => {
     expect(amountField()).toHaveFocus();
   });
 });
+
+describe("TransactionForm uncategorized option", () => {
+  it("offers Uncategorized, so an entry can deliberately be left unfiled", () => {
+    render(<TransactionForm categories={categories} />);
+    const select = screen.getByLabelText("Category");
+    expect(
+      within(select).getByRole("option", { name: "Uncategorized" }),
+    ).toBeInTheDocument();
+  });
+
+  it("posts an empty category_id for Uncategorized", () => {
+    // The action turns "" into null; a missing option would have posted an id.
+    render(<TransactionForm categories={categories} />);
+    const option = within(screen.getByLabelText("Category")).getByRole(
+      "option",
+      { name: "Uncategorized" },
+    );
+    expect(option).toHaveValue("");
+  });
+
+  it("does NOT preselect Uncategorized", () => {
+    // An uncontrolled <select> takes its first option, so Uncategorized is last
+    // on purpose — defaulting every entry to unfiled would be worse.
+    render(<TransactionForm categories={categories} />);
+    expect(screen.getByLabelText("Category")).toHaveValue("c1");
+  });
+
+  it("stays usable when every category of the kind has been deleted", () => {
+    render(<TransactionForm categories={[]} />);
+    const select = screen.getByLabelText("Category");
+    expect(within(select).getAllByRole("option")).toHaveLength(1);
+    expect(select).toHaveValue("");
+  });
+
+  it("keeps the option available on the income side too", async () => {
+    const user = userEvent.setup();
+    render(<TransactionForm categories={categories} />);
+    await user.click(screen.getByText("Income"));
+    expect(
+      within(screen.getByLabelText("Category")).getByRole("option", {
+        name: "Uncategorized",
+      }),
+    ).toBeInTheDocument();
+  });
+});

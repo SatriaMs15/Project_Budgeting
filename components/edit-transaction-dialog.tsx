@@ -113,6 +113,11 @@ export function EditTransactionDialog({
                     {c.name}
                   </option>
                 ))}
+                {/* Without this, defaultValue="" matches nothing and the browser
+                    preselects the first category — so opening an Uncategorized
+                    transaction to fix its note and saving would silently file it
+                    under whatever sorted first. */}
+                <option value="">Uncategorized</option>
               </NativeSelect>
             </div>
             <div className="grid gap-1.5">

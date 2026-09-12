@@ -85,6 +85,14 @@ export default async function Home() {
   const txns = unwrap(txnsRes, "load transactions");
 
   const catById = new Map(categories.map((c) => [c.id, c]));
+
+  /**
+   * Bucket key for spending with no category. Deleting a category sets its
+   * transactions' category_id to NULL (0001_init.sql), and those rupiah are
+   * still real spending: skipping them left the breakdown silently short of
+   * the Expenses tile above it, with nothing on screen to explain the gap.
+   */
+  const UNCATEGORIZED = "\u0000uncategorized";
   const bucketByKey = new Map(buckets.map((b) => [b.key, b]));
 
   let monthIncome = 0;
@@ -102,12 +110,8 @@ export default async function Home() {
         monthIncome += t.amount;
       } else {
         monthExpense += t.amount;
-        if (t.category_id) {
-          catSpend.set(
-            t.category_id,
-            (catSpend.get(t.category_id) ?? 0) + t.amount,
-          );
-        }
+        const key = t.category_id ?? UNCATEGORIZED;
+        catSpend.set(key, (catSpend.get(key) ?? 0) + t.amount);
       }
     }
   }
@@ -115,7 +119,7 @@ export default async function Home() {
   const net = monthIncome - monthExpense;
   const categoryData = [...catSpend.entries()]
     .map(([id, amount]) => {
-      const c = catById.get(id);
+      const c = id === UNCATEGORIZED ? undefined : catById.get(id);
       return {
         name: c?.name ?? "Uncategorized",
         amount,

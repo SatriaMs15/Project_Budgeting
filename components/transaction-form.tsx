@@ -100,6 +100,11 @@ export function TransactionForm({ categories }: { categories: Category[] }) {
               {c.name}
             </option>
           ))}
+          {/* Last, not first: an uncontrolled <select> preselects its first
+              option, and filing everything as Uncategorized by default would be
+              worse than the gap this closes. It still leaves the control usable
+              when every category of this kind has been deleted. */}
+          <option value="">Uncategorized</option>
         </NativeSelect>
       </div>
 
