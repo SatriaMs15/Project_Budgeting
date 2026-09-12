@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertOk } from "@/lib/supabase/unwrap";
+import { isValidDateString } from "@/lib/date";
 import type { Kind } from "@/lib/supabase/types";
 
 export type FormState = { error?: string; ts: number };
@@ -23,6 +24,9 @@ export async function addTransaction(
   }
   if (kind !== "income" && kind !== "expense") {
     return { error: "Pick income or expense.", ts: Date.now() };
+  }
+  if (occurredOn && !isValidDateString(occurredOn)) {
+    return { error: "Enter a valid date.", ts: Date.now() };
   }
 
   const supabase = await createClient();
@@ -59,6 +63,9 @@ export async function updateTransaction(
   }
   if (kind !== "income" && kind !== "expense") {
     return { error: "Pick income or expense.", ts: Date.now() };
+  }
+  if (occurredOn && !isValidDateString(occurredOn)) {
+    return { error: "Enter a valid date.", ts: Date.now() };
   }
 
   const supabase = await createClient();

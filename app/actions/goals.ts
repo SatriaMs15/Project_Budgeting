@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertOk, unwrap } from "@/lib/supabase/unwrap";
+import { isValidDateString } from "@/lib/date";
 
 export type GoalFormState = { error?: string; ts: number };
 
@@ -18,6 +19,9 @@ export async function addGoal(
   if (!name) return { error: "Give the goal a name.", ts: Date.now() };
   if (!Number.isInteger(target) || target <= 0) {
     return { error: "Enter a target amount greater than 0.", ts: Date.now() };
+  }
+  if (targetDate && !isValidDateString(targetDate)) {
+    return { error: "Enter a valid target date.", ts: Date.now() };
   }
 
   const supabase = await createClient();

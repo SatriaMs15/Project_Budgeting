@@ -56,19 +56,27 @@ describe("ImportReview table", () => {
 });
 
 describe("ImportReview low-confidence flag", () => {
-  it("flags a row the extractor could not categorise", () => {
+  it("flags a row the model could not categorise", () => {
     render(
       <ImportReview
         rows={[row({ suggested_category: "" })]}
         categories={categories}
         onReset={vi.fn()}
+        aiUsed
       />,
     );
     expect(screen.getByText(/Low confidence/i)).toBeInTheDocument();
   });
 
   it("does not flag a row that matched a known category", () => {
-    render(<ImportReview rows={[row()]} categories={categories} onReset={vi.fn()} />);
+    render(
+      <ImportReview
+        rows={[row()]}
+        categories={categories}
+        onReset={vi.fn()}
+        aiUsed
+      />,
+    );
     expect(screen.queryByText(/Low confidence/i)).not.toBeInTheDocument();
   });
 
@@ -162,5 +170,44 @@ describe("ImportReview row removal", () => {
 
     await user.click(screen.getByRole("button", { name: "Start over" }));
     expect(onReset).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ImportReview — confidence flag is meaningful", () => {
+  it("flags an unmatched row only when the model actually tried", () => {
+    render(
+      <ImportReview
+        rows={[row({ suggested_category: "" })]}
+        categories={categories}
+        onReset={vi.fn()}
+        aiUsed
+      />,
+    );
+    expect(screen.getByText(/Low confidence/i)).toBeInTheDocument();
+  });
+
+  it("flags nothing after a deterministic CSV parse", () => {
+    // The CSV parser never suggests categories, so flagging would mark every
+    // row — a warning on 100% of rows carries no information.
+    render(
+      <ImportReview
+        rows={[row({ suggested_category: "" }), row({ suggested_category: "" })]}
+        categories={categories}
+        onReset={vi.fn()}
+        aiUsed={false}
+      />,
+    );
+    expect(screen.queryByText(/Low confidence/i)).not.toBeInTheDocument();
+  });
+
+  it("defaults to not flagging when the source is unknown", () => {
+    render(
+      <ImportReview
+        rows={[row({ suggested_category: "" })]}
+        categories={categories}
+        onReset={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText(/Low confidence/i)).not.toBeInTheDocument();
   });
 });

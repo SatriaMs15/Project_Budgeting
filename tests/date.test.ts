@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { monthStart, nextMonthStart, monthLabel, today } from "@/lib/date";
+import {
+  monthStart,
+  nextMonthStart,
+  monthLabel,
+  today,
+  isValidDateString,
+} from "@/lib/date";
 
 describe("monthStart", () => {
   it("returns the first of the given month, zero-padded", () => {
@@ -56,5 +62,54 @@ describe("today", () => {
     // A late-evening local date must not roll back a day via toISOString().
     const lateLocal = new Date(2026, 8, 12, 23, 30);
     expect(today(lateLocal)).toBe("2026-09-12");
+  });
+});
+
+describe("isValidDateString", () => {
+  it("accepts a real date", () => {
+    expect(isValidDateString("2026-09-12")).toBe(true);
+    expect(isValidDateString("2026-01-01")).toBe(true);
+    expect(isValidDateString("2026-12-31")).toBe(true);
+  });
+
+  it("accepts a leap day in a leap year", () => {
+    expect(isValidDateString("2024-02-29")).toBe(true);
+  });
+
+  it("rejects a leap day in a non-leap year", () => {
+    expect(isValidDateString("2026-02-29")).toBe(false);
+  });
+
+  it("rejects days past the end of a month", () => {
+    expect(isValidDateString("2026-02-30")).toBe(false);
+    expect(isValidDateString("2026-04-31")).toBe(false);
+    expect(isValidDateString("2026-06-31")).toBe(false);
+  });
+
+  it("rejects an impossible month or day", () => {
+    expect(isValidDateString("2026-13-01")).toBe(false);
+    expect(isValidDateString("2026-00-10")).toBe(false);
+    expect(isValidDateString("2026-09-00")).toBe(false);
+    expect(isValidDateString("2026-09-32")).toBe(false);
+  });
+
+  it("rejects anything not in YYYY-MM-DD form", () => {
+    for (const bad of [
+      "not-a-date",
+      "",
+      "2026-9-5",
+      "12/09/2026",
+      "2026-09-12T00:00:00Z",
+      "20260912",
+      " 2026-09-12",
+    ]) {
+      expect(isValidDateString(bad)).toBe(false);
+    }
+  });
+
+  it("agrees with the helpers that produce dates", () => {
+    expect(isValidDateString(today())).toBe(true);
+    expect(isValidDateString(monthStart())).toBe(true);
+    expect(isValidDateString(nextMonthStart())).toBe(true);
   });
 });

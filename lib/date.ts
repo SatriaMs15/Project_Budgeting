@@ -25,3 +25,23 @@ export function today(d = new Date()): string {
     d.getDate(),
   ).padStart(2, "0")}`;
 }
+
+/**
+ * True for a real calendar date written as YYYY-MM-DD.
+ *
+ * Rejects both malformed strings and impossible dates ("2026-02-30"), so a bad
+ * value is caught with a readable message instead of reaching Postgres and
+ * coming back as `invalid input syntax for type date`.
+ */
+export function isValidDateString(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  // Round-tripping catches month-length overflow (e.g. 31 April, 30 February).
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y &&
+    dt.getUTCMonth() === m - 1 &&
+    dt.getUTCDate() === d
+  );
+}

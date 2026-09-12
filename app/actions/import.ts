@@ -11,6 +11,8 @@ import { createClient } from "@/lib/supabase/server";
 import { unwrap } from "@/lib/supabase/unwrap";
 import type { Kind } from "@/lib/supabase/types";
 import { parseCsvTransactions, type ProposedRow } from "@/lib/csv";
+import { isValidDateString } from "@/lib/date";
+import { humanizeAiError } from "@/lib/ai-errors";
 
 // "…-latest" alias tracks the current free-tier Flash, so we don't churn model
 // versions as Google retires older ones (2.5-flash is already gone for new keys).
@@ -20,6 +22,9 @@ export type ExtractState = {
   error?: string;
   notice?: string;
   rows?: ProposedRow[];
+  /** True when the model produced the rows, so category suggestions were
+   *  actually attempted and an empty one means low confidence. */
+  aiUsed?: boolean;
   ts: number;
 };
 
@@ -116,7 +121,9 @@ export async function extractTransactions(
     }
     return {
       rows,
-      notice: "Read locally without AI. Review the rows and set categories below.",
+      notice:
+        "Read directly from the CSV. Set a category for each row below.",
+      aiUsed: false,
       ts,
     };
   }
@@ -163,7 +170,7 @@ export async function extractTransactions(
         ts,
       };
     }
-    return { rows, ts };
+    return { rows, aiUsed: true, ts };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     // On failure (e.g. quota), still try to help CSV users deterministically.
@@ -172,12 +179,15 @@ export async function extractTransactions(
       if (rows.length > 0) {
         return {
           rows,
-          notice: `AI unavailable (${message}); read the CSV locally instead.`,
+          notice: `AI couldn't be used — ${humanizeAiError(message)}. Read the CSV directly instead; set categories below.`,
           ts,
         };
       }
     }
-    return { error: `Couldn't extract transactions: ${message}`, ts };
+    return {
+      error: `Couldn't read that file — ${humanizeAiError(message)}.`,
+      ts,
+    };
   }
 }
 
@@ -196,23 +206,37 @@ export async function importTransactions(
   const kinds = formData.getAll("kind").map(String);
   const categoryIds = formData.getAll("category_id").map(String);
 
-  const rows = dates
-    .map((occurred_on, i) => ({
-      occurred_on,
-      note: (notes[i] ?? "").trim(),
-      amount: amounts[i],
-      kind: kinds[i] as Kind,
-      category_id: categoryIds[i] ? categoryIds[i] : null,
-    }))
-    .filter(
-      (r) =>
-        Number.isInteger(r.amount) &&
-        r.amount > 0 &&
-        (r.kind === "income" || r.kind === "expense"),
-    );
+  const candidates = dates.map((occurred_on, i) => ({
+    occurred_on,
+    note: (notes[i] ?? "").trim(),
+    amount: amounts[i],
+    kind: kinds[i] as Kind,
+    category_id: categoryIds[i] ? categoryIds[i] : null,
+  }));
 
-  if (rows.length === 0) {
+  const rows = candidates.filter(
+    (r) =>
+      Number.isInteger(r.amount) &&
+      r.amount > 0 &&
+      (r.kind === "income" || r.kind === "expense") &&
+      (!r.occurred_on || isValidDateString(r.occurred_on)),
+  );
+
+  if (candidates.length === 0 || rows.length === 0) {
     return { error: "No valid rows to import.", ts };
+  }
+
+  // Never import a subset silently. The review screen promises a row count, so
+  // a row that would be dropped has to be fixed or removed by the user first —
+  // importing 3 of 4 and reporting success loses data without saying so.
+  const dropped = candidates.length - rows.length;
+  if (dropped > 0) {
+    return {
+      error:
+        `${dropped} row${dropped === 1 ? " has" : "s have"} a missing or invalid ` +
+        `amount, kind or date. Fix or remove ${dropped === 1 ? "it" : "them"} before importing.`,
+      ts,
+    };
   }
 
   const supabase = await createClient();

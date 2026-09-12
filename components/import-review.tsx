@@ -15,8 +15,10 @@ import type { ProposedRow } from "@/lib/csv";
 const initialState: ImportState = { ts: 0 };
 
 /** Shared column track for the review table's header and rows. */
+// Date needs 132px: a native date input renders dd/mm/yyyy plus a picker
+// icon, and at 100px the year was clipped to "02/09/202".
 const COLS =
-  "grid grid-cols-[100px_1fr_150px_110px_160px_70px] gap-3 min-w-[680px]";
+  "grid grid-cols-[132px_1fr_150px_110px_160px_70px] gap-3 min-w-[712px]";
 
 type RowState = ProposedRow & { key: number };
 
@@ -26,10 +28,12 @@ function ReviewRow({
   row,
   categories,
   onRemove,
+  aiUsed,
 }: {
   row: RowState;
   categories: Category[];
   onRemove: () => void;
+  aiUsed: boolean;
 }) {
   const [kind, setKind] = useState<Kind>(row.kind);
 
@@ -38,9 +42,10 @@ function ReviewRow({
     options.find((c) => c.name === row.suggested_category)?.id ?? "";
   const [categoryId, setCategoryId] = useState(initialCategory);
 
-  // The extractor returns "" when it couldn't match a known category — that's
-  // the honest signal for "check this one" rather than a fabricated score.
-  const lowConfidence = !row.suggested_category;
+  // "" means the model tried and couldn't match a category. The deterministic
+  // CSV parser never suggests one at all, so flagging there would mark every
+  // single row — a warning on 100% of rows tells the reader nothing.
+  const lowConfidence = aiUsed && !row.suggested_category;
 
   // Switching kind changes the available categories — drop a now-invalid pick.
   function switchKind(next: Kind) {
@@ -119,10 +124,12 @@ export function ImportReview({
   rows: proposed,
   categories,
   onReset,
+  aiUsed = false,
 }: {
   rows: ProposedRow[];
   categories: Category[];
   onReset: () => void;
+  aiUsed?: boolean;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<RowState[]>(
@@ -170,6 +177,7 @@ export function ImportReview({
             row={row}
             categories={categories}
             onRemove={() => setRows((rs) => rs.filter((r) => r.key !== row.key))}
+            aiUsed={aiUsed}
           />
         ))}
       </div>

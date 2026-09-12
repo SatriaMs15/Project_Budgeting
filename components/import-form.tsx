@@ -71,6 +71,7 @@ export function ImportForm({ categories }: { categories: Category[] }) {
           rows={state.rows!}
           categories={categories}
           onReset={() => setDismissedTs(state.ts)}
+          aiUsed={state.aiUsed ?? false}
         />
       </div>
     );

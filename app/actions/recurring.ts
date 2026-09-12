@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertOk } from "@/lib/supabase/unwrap";
+import { isValidDateString } from "@/lib/date";
 import type { Frequency, Kind } from "@/lib/supabase/types";
 
 export type RecurringFormState = { error?: string; ts: number };
@@ -30,6 +31,9 @@ export async function addRule(
   }
   if (!nextRunOn) {
     return { error: "Pick a start date.", ts: Date.now() };
+  }
+  if (!isValidDateString(nextRunOn)) {
+    return { error: "Enter a valid start date.", ts: Date.now() };
   }
 
   const supabase = await createClient();
