@@ -9,7 +9,7 @@ import type { Category, Kind } from "@/lib/supabase/types";
  * Shared column track for the category ledger's header and rows.
  *
  * Limit gets 150px for the same reason the recurring table's amount column
- * does: "Rp 125.000.000" is nine digits plus the symbol, and a tighter track
+ * does: "Rp 125,000,000" is nine digits plus the symbol, and a tighter track
  * clips it.
  */
 const COLS =

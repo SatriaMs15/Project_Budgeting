@@ -35,7 +35,7 @@ describe("describeCategoryDeletion — the destructive half", () => {
       usage({ budgetMonths: 2, currentLimit: 2_000_000 }),
     );
     // formatIDR emits a non-breaking space after "Rp".
-    expect(destroyed[0]).toContain("Rp 2.000.000");
+    expect(destroyed[0]).toContain("Rp 2,000,000");
     expect(destroyed[0]).toContain("this month");
   });
 
@@ -43,7 +43,7 @@ describe("describeCategoryDeletion — the destructive half", () => {
     const { destroyed } = describeCategoryDeletion(
       usage({ budgetMonths: 1, currentLimit: 125_000_000 }),
     );
-    expect(destroyed[0]).toContain("Rp 125.000.000");
+    expect(destroyed[0]).toContain("Rp 125,000,000");
   });
 
   it("omits the figure when a past month has a limit but this one does not", () => {

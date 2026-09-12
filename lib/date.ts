@@ -1,3 +1,5 @@
+import { LOCALE } from "@/lib/locale";
+
 /** Date helpers for month-scoped budgeting (all in the user's local time). */
 
 /** First day of the given month as "YYYY-MM-01". */
@@ -14,9 +16,9 @@ export function nextMonthStart(d = new Date()): string {
     : `${y}-${String(m + 2).padStart(2, "0")}-01`;
 }
 
-/** Human label like "Juli 2026". */
+/** Human label like "July 2026". */
 export function monthLabel(d = new Date()): string {
-  return d.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  return d.toLocaleDateString(LOCALE, { month: "long", year: "numeric" });
 }
 
 /** Today as "YYYY-MM-DD" in local time. */

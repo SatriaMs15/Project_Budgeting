@@ -51,7 +51,7 @@ describe("ImportReview table", () => {
     render(<ImportReview rows={[row()]} categories={categories} onReset={vi.fn()} />);
     expect(screen.getByDisplayValue("Warung lunch")).toBeInTheDocument();
     expect(screen.getByDisplayValue("2026-09-05")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("25.000")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("25,000")).toBeInTheDocument();
   });
 });
 

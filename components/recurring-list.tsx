@@ -4,9 +4,10 @@ import { formatIDR } from "@/lib/format";
 import { moneyInk } from "@/lib/chart-colors";
 import { categoryColor } from "@/lib/category-colors";
 import type { Category, RecurringRule } from "@/lib/supabase/types";
+import { LOCALE } from "@/lib/locale";
 
 function formatDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("id-ID", {
+  return new Date(iso + "T00:00:00").toLocaleDateString(LOCALE, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -14,7 +15,7 @@ function formatDate(iso: string) {
 }
 
 /** Shared column track for the recurring table's header and rows. */
-// Amount gets 155px: "−Rp 125.000.000" is 9 digits plus sign and symbol, and
+// Amount gets 155px: "−Rp 125,000,000" is 9 digits plus sign and symbol, and
 // at 130px it overran into the cadence column.
 const COLS =
   "grid grid-cols-[1fr_130px_155px_110px_130px_60px] gap-3 min-w-[690px]";

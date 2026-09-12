@@ -116,9 +116,18 @@ export async function launch() {
 export const go = (page, path) =>
   page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
 
-/** Parse every "Rp 1.234.567" in a string into numbers. */
+/**
+ * Parse every "Rp 1,234,567" in a string into numbers.
+ *
+ * Accepts both grouping conventions and strips either separator, so the suite
+ * keeps working whichever locale lib/locale.ts is set to. Safe because IDR has
+ * no minor unit — there is never a decimal part to lose. (`\s` matches the
+ * U+00A0 that Intl puts after "Rp".)
+ */
 export const rupiah = (text) =>
-  [...text.matchAll(/Rp\s*([\d.]+)/g)].map((m) => Number(m[1].replace(/\./g, "")));
+  [...text.matchAll(/Rp\s*([\d.,]+)/g)].map((m) =>
+    Number(m[1].replace(/[.,]/g, "")),
+  );
 
 export async function addCategory(page, name, kind = "expense") {
   await go(page, "/categories");

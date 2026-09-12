@@ -46,9 +46,17 @@ describe("nextMonthStart", () => {
 });
 
 describe("monthLabel", () => {
-  it("renders an Indonesian long month and year", () => {
+  it("renders an English long month and year", () => {
     expect(monthLabel(new Date(2026, 8, 12))).toBe("September 2026");
-    expect(monthLabel(new Date(2026, 6, 1))).toBe("Juli 2026");
+    expect(monthLabel(new Date(2026, 6, 1))).toBe("July 2026");
+  });
+
+  it("uses English for the months that used to give it away", () => {
+    // These four are where the half-translated UI showed: Mei, Agu, Okt, Des.
+    expect(monthLabel(new Date(2026, 4, 1))).toBe("May 2026");
+    expect(monthLabel(new Date(2026, 7, 1))).toBe("August 2026");
+    expect(monthLabel(new Date(2026, 9, 1))).toBe("October 2026");
+    expect(monthLabel(new Date(2026, 11, 1))).toBe("December 2026");
   });
 });
 

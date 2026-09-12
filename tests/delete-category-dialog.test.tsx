@@ -68,7 +68,7 @@ describe("DeleteCategoryDialog — the budget cascade", () => {
   it("names this month's figure", async () => {
     await openDialog({ budgetMonths: 1, currentLimit: 2_000_000 });
     // formatIDR emits a non-breaking space after "Rp".
-    expect(document.body.textContent).toContain("Rp 2.000.000");
+    expect(document.body.textContent).toContain("Rp 2,000,000");
   });
 
   it("raises no cascade warning when no budget references the category", async () => {

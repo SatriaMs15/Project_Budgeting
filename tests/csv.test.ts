@@ -127,6 +127,16 @@ describe("parseCsvTransactions — amounts", () => {
     expect(rows[0].amount).toBe(1_250_000);
   });
 
+  it("reads dot-grouped amounts whatever the UI locale is set to", () => {
+    // Imported files come from the user's bank, not from this app, so an
+    // Indonesian export stays dot-grouped even though the UI now displays
+    // "Rp 1,250,000". Parsing must not follow the display convention.
+    const rows = parseCsvTransactions(
+      'date,description,amount\n2026-09-01,Big,"Rp 1,250,000"',
+    );
+    expect(rows[0].amount).toBe(1_250_000);
+  });
+
   it("handles 9-digit amounts without precision loss", () => {
     const rows = parseCsvTransactions(
       "date,description,amount\n2026-09-01,House,125000000",

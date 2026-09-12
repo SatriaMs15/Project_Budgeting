@@ -77,7 +77,7 @@ describe("TransactionForm category filtering", () => {
 describe("TransactionForm quick amounts", () => {
   it("offers the four everyday amounts", () => {
     render(<TransactionForm categories={categories} />);
-    for (const label of ["Rp 15.000", "Rp 50.000", "Rp 100.000", "Rp 250.000"]) {
+    for (const label of ["Rp 15,000", "Rp 50,000", "Rp 100,000", "Rp 250,000"]) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
   });
@@ -86,9 +86,9 @@ describe("TransactionForm quick amounts", () => {
     const user = userEvent.setup();
     const { container } = render(<TransactionForm categories={categories} />);
 
-    await user.click(screen.getByRole("button", { name: "Rp 50.000" }));
+    await user.click(screen.getByRole("button", { name: "Rp 50,000" }));
 
-    expect(amountField()).toHaveValue("50.000");
+    expect(amountField()).toHaveValue("50,000");
     expect(
       container.querySelector<HTMLInputElement>("input[type=hidden][name=amount]")!
         .value,
@@ -99,17 +99,17 @@ describe("TransactionForm quick amounts", () => {
     const user = userEvent.setup();
     render(<TransactionForm categories={categories} />);
 
-    await user.click(screen.getByRole("button", { name: "Rp 50.000" }));
-    await user.click(screen.getByRole("button", { name: "Rp 250.000" }));
+    await user.click(screen.getByRole("button", { name: "Rp 50,000" }));
+    await user.click(screen.getByRole("button", { name: "Rp 250,000" }));
 
-    expect(amountField()).toHaveValue("250.000");
+    expect(amountField()).toHaveValue("250,000");
   });
 
   it("returns focus to the amount field after a tap", async () => {
     const user = userEvent.setup();
     render(<TransactionForm categories={categories} />);
 
-    await user.click(screen.getByRole("button", { name: "Rp 15.000" }));
+    await user.click(screen.getByRole("button", { name: "Rp 15,000" }));
     expect(amountField()).toHaveFocus();
   });
 });

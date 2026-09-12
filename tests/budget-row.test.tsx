@@ -35,15 +35,15 @@ describe("BudgetRow figures", () => {
     const { container } = render(
       <BudgetRow category={category} spent={100_000} limit={1_000_000} />,
     );
-    expect(container.textContent).toContain("Rp 100.000");
-    expect(container.textContent).toContain("of Rp 1.000.000");
+    expect(container.textContent).toContain("Rp 100,000");
+    expect(container.textContent).toContain("of Rp 1,000,000");
   });
 
   it("shows spending only when there is no limit", () => {
     const { container } = render(
       <BudgetRow category={category} spent={50_000} limit={0} />,
     );
-    expect(container.textContent).toContain("Rp 50.000");
+    expect(container.textContent).toContain("Rp 50,000");
     expect(container.textContent).not.toContain("of Rp");
   });
 
@@ -90,7 +90,7 @@ describe("BudgetRow progress bar", () => {
 describe("BudgetRow limit form", () => {
   it("prefills the current limit so Save is an edit, not a re-entry", () => {
     render(<BudgetRow category={category} spent={0} limit={750_000} />);
-    expect(screen.getByRole("textbox")).toHaveValue("750.000");
+    expect(screen.getByRole("textbox")).toHaveValue("750,000");
   });
 
   it("leaves the field empty when no limit is set", () => {

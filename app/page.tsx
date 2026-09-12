@@ -10,6 +10,7 @@ import { CHART } from "@/lib/chart-colors";
 import { categoryColor } from "@/lib/category-colors";
 import { MonthlyBarChart } from "@/components/charts/monthly-bars";
 import { CategoryLedger } from "@/components/charts/category-ledger";
+import { LOCALE } from "@/lib/locale";
 
 /**
  * One column of the stat row. Bare figures separated by hairlines — no boxes,
@@ -66,7 +67,7 @@ export default async function Home() {
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     return {
       key,
-      label: d.toLocaleDateString("id-ID", { month: "short" }),
+      label: d.toLocaleDateString(LOCALE, { month: "short" }),
       income: 0,
       expense: 0,
     };
@@ -209,7 +210,7 @@ export default async function Home() {
         <section>
           <h2 className="mb-5 font-heading text-[19px] font-semibold">
             Spending by category ·{" "}
-            {now.toLocaleDateString("id-ID", { month: "long" })}
+            {now.toLocaleDateString(LOCALE, { month: "long" })}
           </h2>
           <CategoryLedger data={categoryData} />
         </section>

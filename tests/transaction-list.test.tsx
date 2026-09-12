@@ -52,8 +52,8 @@ describe("TransactionList register", () => {
       <TransactionList transactions={txns} categories={categories} />,
     );
     const text = container.textContent ?? "";
-    expect(text).toContain(`−Rp${NB}100.000`);
-    expect(text).toContain(`+Rp${NB}8.500.000`);
+    expect(text).toContain(`−Rp${NB}100,000`);
+    expect(text).toContain(`+Rp${NB}8,500,000`);
   });
 
   it("uses a true minus sign, not a hyphen", () => {

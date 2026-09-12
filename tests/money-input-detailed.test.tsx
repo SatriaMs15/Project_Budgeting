@@ -17,7 +17,7 @@ describe("MoneyInput — typing digit by digit", () => {
     render(<MoneyInput name="amount" />);
     const field = screen.getByRole("textbox");
 
-    const expected = ["1", "12", "123", "1.234", "12.345", "123.456"];
+    const expected = ["1", "12", "123", "1,234", "12,345", "123,456"];
     for (const [i, want] of expected.entries()) {
       await user.type(field, String(i + 1));
       expect(field).toHaveValue(want);
@@ -57,7 +57,7 @@ describe("MoneyInput — editing existing values", () => {
 
     await user.tripleClick(field);
     await user.keyboard("99000");
-    expect(field).toHaveValue("99.000");
+    expect(field).toHaveValue("99,000");
     expect(submitted(container)).toBe("99000");
   });
 
@@ -79,7 +79,7 @@ describe("MoneyInput — editing existing values", () => {
 
 describe("MoneyInput — pasted and malformed input", () => {
   it.each([
-    ["a formatted rupiah string", "Rp 1.250.000", "1250000"],
+    ["a formatted rupiah string", "Rp 1,250,000", "1250000"],
     ["comma separators", "1,250,000", "1250000"],
     ["spaces", "1 250 000", "1250000"],
     ["a trailing decimal", "1500,75", "150075"],
@@ -104,11 +104,11 @@ describe("MoneyInput — pasted and malformed input", () => {
 
 describe("MoneyInput — large amounts", () => {
   it.each([
-    [1_000, "1.000"],
-    [15_000, "15.000"],
-    [1_250_000, "1.250.000"],
-    [125_000_000, "125.000.000"],
-    [1_000_000_000, "1.000.000.000"],
+    [1_000, "1,000"],
+    [15_000, "15,000"],
+    [1_250_000, "1,250,000"],
+    [125_000_000, "125,000,000"],
+    [1_000_000_000, "1,000,000,000"],
   ])("renders %i as %s", (amount, display) => {
     render(<MoneyInput name="amount" defaultValue={amount} />);
     expect(screen.getByRole("textbox")).toHaveValue(display);

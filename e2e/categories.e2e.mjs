@@ -84,7 +84,7 @@ await test("a deleted category's transaction survives as Uncategorized", async (
   const row = txRow(page, note);
   eq("row still present", await row.count(), 1);
   const text = (await row.textContent()) || "";
-  ok("amount intact", text.includes("777.000"));
+  ok("amount intact", text.includes("777,000"));
   ok("reads as Uncategorized", text.includes("Uncategorized"));
   ok("old category name is gone", !text.includes(name));
 });
@@ -151,7 +151,7 @@ await test("deleting a budgeted category warns with the real figure", async () =
   await page.getByRole("heading", { name: /Delete/ }).waitFor();
   const dialog = (await page.getByRole("dialog").textContent()) || "";
   ok("warns it cannot be undone", /cannot be undone/i.test(dialog));
-  ok("names the amount at risk", dialog.includes("2.000.000"));
+  ok("names the amount at risk", dialog.includes("2,000,000"));
   ok("says the limit is destroyed", /deleted for good/i.test(dialog));
 
   await page.getByRole("button", { name: "Delete category" }).click();

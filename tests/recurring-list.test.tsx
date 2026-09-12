@@ -46,8 +46,8 @@ describe("RecurringList rows", () => {
     const { container } = render(
       <RecurringList rules={rules} categories={categories} />,
     );
-    expect(container.textContent).toContain("−Rp 2.500.000");
-    expect(container.textContent).toContain("+Rp 8.500.000");
+    expect(container.textContent).toContain("−Rp 2,500,000");
+    expect(container.textContent).toContain("+Rp 8,500,000");
   });
 
   it("spells out the cadence", () => {
@@ -58,7 +58,7 @@ describe("RecurringList rows", () => {
 
   it("shows the next run date", () => {
     render(<RecurringList rules={rules} categories={categories} />);
-    expect(screen.getByText("01 Okt 2026")).toBeInTheDocument();
+    expect(screen.getByText("01 Oct 2026")).toBeInTheDocument();
   });
 
   it("labels the stop control with the item it stops", () => {

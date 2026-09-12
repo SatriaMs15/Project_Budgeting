@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { formatIDR } from "@/lib/format";
 import { CHART } from "@/lib/chart-colors";
 import type { SavingsGoal } from "@/lib/supabase/types";
+import { LOCALE } from "@/lib/locale";
 
 function formatDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("id-ID", {
+  return new Date(iso + "T00:00:00").toLocaleDateString(LOCALE, {
     day: "numeric",
     month: "short",
     year: "numeric",

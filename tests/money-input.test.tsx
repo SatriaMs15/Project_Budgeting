@@ -17,13 +17,13 @@ describe("MoneyInput display", () => {
 
   it("shows a grouped default value", () => {
     render(<MoneyInput name="amount" defaultValue={1_250_000} />);
-    expect(screen.getByRole("textbox")).toHaveValue("1.250.000");
+    expect(screen.getByRole("textbox")).toHaveValue("1,250,000");
   });
 
   it("shows the Rp affix as static text, not part of the value", () => {
     render(<MoneyInput name="amount" defaultValue={5000} />);
     expect(screen.getByText("Rp")).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toHaveValue("5.000");
+    expect(screen.getByRole("textbox")).toHaveValue("5,000");
   });
 });
 
@@ -34,7 +34,7 @@ describe("MoneyInput submitted value", () => {
 
     await user.type(screen.getByRole("textbox"), "1250000");
 
-    expect(screen.getByRole("textbox")).toHaveValue("1.250.000");
+    expect(screen.getByRole("textbox")).toHaveValue("1,250,000");
     expect(hiddenValue(container, "amount")).toBe("1250000");
   });
 
@@ -49,7 +49,7 @@ describe("MoneyInput submitted value", () => {
 
     await user.type(screen.getByRole("textbox"), "125000000");
 
-    expect(screen.getByRole("textbox")).toHaveValue("125.000.000");
+    expect(screen.getByRole("textbox")).toHaveValue("125,000,000");
     expect(hiddenValue(container, "amount")).toBe("125000000");
   });
 
@@ -87,7 +87,7 @@ describe("MoneyInput controlled mode", () => {
     const { container } = render(
       <MoneyInput name="amount" value={250_000} onValueChange={() => {}} />,
     );
-    expect(screen.getByRole("textbox")).toHaveValue("250.000");
+    expect(screen.getByRole("textbox")).toHaveValue("250,000");
     expect(hiddenValue(container, "amount")).toBe("250000");
   });
 
@@ -98,7 +98,7 @@ describe("MoneyInput controlled mode", () => {
     render(<MoneyInput name="amount" value={1000} onValueChange={() => {}} />);
 
     await user.type(screen.getByRole("textbox"), "9");
-    expect(screen.getByRole("textbox")).toHaveValue("1.000");
+    expect(screen.getByRole("textbox")).toHaveValue("1,000");
   });
 });
 

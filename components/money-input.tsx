@@ -6,7 +6,7 @@ import { formatGrouped, parseIDR } from "@/lib/format";
 
 /**
  * Rupiah amount input. Shows thousand separators as the user types
- * ("1.250.000") while submitting the raw integer via a hidden field.
+ * ("1,250,000") while submitting the raw integer via a hidden field.
  *
  * Works uncontrolled by default. Pass `value`/`onValueChange` to drive it from
  * outside — the Transactions form does that so its quick-amount chips can fill

@@ -28,8 +28,8 @@ describe("CategoryLedger", () => {
   it("lists every category with its formatted amount", () => {
     render(<CategoryLedger data={data} />);
     expect(screen.getByText("Bills")).toBeInTheDocument();
-    expect(screen.getByText("Rp 2.500.000")).toBeInTheDocument();
-    expect(screen.getByText("Rp 500.000")).toBeInTheDocument();
+    expect(screen.getByText("Rp 2,500,000")).toBeInTheDocument();
+    expect(screen.getByText("Rp 500,000")).toBeInTheDocument();
   });
 
   it("scales each intensity bar against the largest category", () => {

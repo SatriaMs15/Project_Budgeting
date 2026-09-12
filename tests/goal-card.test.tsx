@@ -13,13 +13,13 @@ const { GoalCard } = await import("@/components/goal-card");
 describe("GoalCard progress", () => {
   it("shows saved and target amounts", () => {
     render(<GoalCard goal={makeGoal()} />);
-    expect(screen.getByText("Rp 5.000.000")).toBeInTheDocument();
-    expect(screen.getByText("of Rp 20.000.000")).toBeInTheDocument();
+    expect(screen.getByText("Rp 5,000,000")).toBeInTheDocument();
+    expect(screen.getByText("of Rp 20,000,000")).toBeInTheDocument();
   });
 
   it("reports what is left to save", () => {
     render(<GoalCard goal={makeGoal()} />);
-    expect(screen.getByText("Rp 15.000.000 to go")).toBeInTheDocument();
+    expect(screen.getByText("Rp 15,000,000 to go")).toBeInTheDocument();
   });
 
   it("fills the bar proportionally", () => {

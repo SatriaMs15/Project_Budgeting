@@ -8,10 +8,11 @@ import { formatIDR } from "@/lib/format";
 import { moneyInk } from "@/lib/chart-colors";
 import { categoryColor } from "@/lib/category-colors";
 import type { Category, Transaction } from "@/lib/supabase/types";
+import { LOCALE } from "@/lib/locale";
 
 /** Compact numeric date — narrow enough for the register's 92px column. */
 function formatDate(iso: string) {
-  return new Date(iso + "T00:00:00").toLocaleDateString("id-ID", {
+  return new Date(iso + "T00:00:00").toLocaleDateString(LOCALE, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

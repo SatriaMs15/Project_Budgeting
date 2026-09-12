@@ -102,7 +102,7 @@ describe("CategoryList usage columns", () => {
       />,
     );
     // formatIDR emits a non-breaking space after "Rp".
-    expect(container.textContent).toContain("Rp 2.000.000");
+    expect(container.textContent).toContain("Rp 2,000,000");
   });
 
   it("does not clip a nine-digit limit into the next column", () => {
@@ -114,7 +114,7 @@ describe("CategoryList usage columns", () => {
         })}
       />,
     );
-    expect(container.textContent).toContain("Rp 125.000.000");
+    expect(container.textContent).toContain("Rp 125,000,000");
   });
 
   it("leaves an em dash where there is nothing to report", () => {
