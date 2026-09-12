@@ -4,12 +4,7 @@ import { ensureDefaultCategories } from "@/lib/categories";
 import { materializeDueRecurring } from "@/lib/recurring";
 import { AddRecurringForm } from "@/components/add-recurring-form";
 import { RecurringList } from "@/components/recurring-list";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default async function RecurringPage() {
   await ensureDefaultCategories();
@@ -27,24 +22,21 @@ export default async function RecurringPage() {
   const rules = unwrap(rulesRes, "load recurring items");
 
   return (
-    <div className="grid gap-6 md:grid-cols-[minmax(0,340px)_1fr]">
-      <Card className="h-fit">
-        <CardHeader>
-          <CardTitle>New recurring item</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AddRecurringForm categories={categories} />
-        </CardContent>
-      </Card>
+    <div>
+      <h1 className="mb-7 font-heading text-[32px] font-semibold">Recurring</h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recurring items</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="grid items-start gap-7 lg:grid-cols-[340px_1fr]">
+        <Card className="elev-sm">
+          <CardContent>
+            <p className="kicker mb-2.5">New recurring item</p>
+            <AddRecurringForm categories={categories} />
+          </CardContent>
+        </Card>
+
+        <Card className="elev-sm py-0">
           <RecurringList rules={rules} categories={categories} />
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -2,42 +2,38 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ArrowLeftRight,
-  Wallet,
-  Target,
-  Repeat,
-  Upload,
-  type LucideIcon,
-} from "lucide-react";
 
-const links: { href: string; label: string; Icon: LucideIcon }[] = [
-  { href: "/transactions", label: "Transactions", Icon: ArrowLeftRight },
-  { href: "/budgets", label: "Budgets", Icon: Wallet },
-  { href: "/goals", label: "Goals", Icon: Target },
-  { href: "/recurring", label: "Recurring", Icon: Repeat },
-  { href: "/import", label: "Import", Icon: Upload },
+const links = [
+  { href: "/", label: "Dashboard" },
+  { href: "/transactions", label: "Transactions" },
+  { href: "/budgets", label: "Budgets" },
+  { href: "/goals", label: "Goals" },
+  { href: "/recurring", label: "Recurring" },
+  { href: "/import", label: "Import" },
 ];
 
 export function NavLinks() {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-wrap gap-1 text-sm">
-      {links.map(({ href, label, Icon }) => {
-        const active = pathname === href || pathname.startsWith(`${href}/`);
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm">
+      {links.map(({ href, label }) => {
+        // "/" would prefix-match everything, so it only ever matches exactly.
+        const active =
+          href === "/"
+            ? pathname === "/"
+            : pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-medium transition-all duration-200 active:scale-95 ${
+            className={
               active
-                ? "bg-accent text-accent-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground"
-            }`}
+                ? "text-[color:var(--accent-700)]"
+                : "text-foreground transition-colors hover:text-[color:var(--accent-700)]"
+            }
           >
-            <Icon className={`size-4 ${active ? "text-primary" : ""}`} />
             {label}
           </Link>
         );

@@ -1,17 +1,20 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { addTransaction, type FormState } from "@/app/actions/transactions";
+import { KindToggle } from "@/components/kind-toggle";
 import { MoneyInput } from "@/components/money-input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatGrouped } from "@/lib/format";
 import type { Category, Kind } from "@/lib/supabase/types";
 
 const initialState: FormState = { ts: 0 };
 
-const selectClass =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
+/** Everyday rupiah amounts, one tap away. */
+const QUICK_AMOUNTS = [15_000, 50_000, 100_000, 250_000];
 
 export function TransactionForm({ categories }: { categories: Category[] }) {
   const [state, formAction, pending] = useActionState(
@@ -19,58 +22,92 @@ export function TransactionForm({ categories }: { categories: Category[] }) {
     initialState,
   );
   const [kind, setKind] = useState<Kind>("expense");
+  const [amount, setAmount] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
   const today = new Date().toISOString().slice(0, 10);
 
   const visibleCategories = categories.filter((c) => c.kind === kind);
 
+  // After a successful add, clear the amount. The `key` below remounts the
+  // form's fields but not this component, so `amount` has to be reset here —
+  // adjusted during render rather than in an effect, which avoids the extra
+  // render pass an effect would cost.
+  const [lastTs, setLastTs] = useState(state.ts);
+  if (state.ts !== lastTs) {
+    setLastTs(state.ts);
+    if (!state.error) setAmount(0);
+  }
+
+  // Focus is a DOM effect, not state: put the caret back where the next entry
+  // starts so several transactions can be logged without the mouse.
+  useEffect(() => {
+    if (state.ts > 0 && !state.error) amountRef.current?.focus();
+  }, [state.ts, state.error]);
+
+  /** Enter anywhere in Amount or Note submits, rather than doing nothing. */
+  function submitOnEnter(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      formRef.current?.requestSubmit();
+    }
+  }
+
   return (
-    // Remounting on each successful submit (new ts) clears every field.
-    <form key={state.ts} action={formAction} className="grid gap-4">
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => setKind("expense")}
-          className={`rounded-md border px-3 py-2 text-sm font-medium transition ${
-            kind === "expense"
-              ? "border-red-500 bg-red-50 text-red-700"
-              : "text-muted-foreground"
-          }`}
-        >
-          Expense
-        </button>
-        <button
-          type="button"
-          onClick={() => setKind("income")}
-          className={`rounded-md border px-3 py-2 text-sm font-medium transition ${
-            kind === "income"
-              ? "border-green-500 bg-green-50 text-green-700"
-              : "text-muted-foreground"
-          }`}
-        >
-          Income
-        </button>
-      </div>
+    // Remounting on each successful submit (new ts) clears the text fields.
+    <form key={state.ts} ref={formRef} action={formAction} className="grid gap-3.5">
+      <KindToggle name="kind-toggle" value={kind} onChange={setKind} />
       <input type="hidden" name="kind" value={kind} />
 
-      <div className="grid gap-2">
-        <Label htmlFor="amount">Amount</Label>
-        <MoneyInput id="amount" name="amount" required />
+      <div className="grid gap-1.5">
+        <Label htmlFor="amount" className="text-xs text-muted-foreground">
+          Amount
+        </Label>
+        <MoneyInput
+          id="amount"
+          name="amount"
+          required
+          autoFocus
+          inputRef={amountRef}
+          value={amount}
+          onValueChange={setAmount}
+          onKeyDown={submitOnEnter}
+        />
+        <div className="mt-1 flex flex-wrap gap-1">
+          {QUICK_AMOUNTS.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => {
+                setAmount(q);
+                amountRef.current?.focus();
+              }}
+              className="rounded-[3px] border border-divider px-1.5 py-[3px] text-[11px] whitespace-nowrap text-muted-foreground transition-colors hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+            >
+              Rp {formatGrouped(q)}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="category_id">Category</Label>
-        <select id="category_id" name="category_id" className={selectClass}>
+      <div className="grid gap-1.5">
+        <Label htmlFor="category_id" className="text-xs text-muted-foreground">
+          Category
+        </Label>
+        <NativeSelect id="category_id" name="category_id">
           {visibleCategories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
           ))}
-        </select>
+        </NativeSelect>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="occurred_on">Date</Label>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-1.5">
+          <Label htmlFor="occurred_on" className="text-xs text-muted-foreground">
+            Date
+          </Label>
           <Input
             id="occurred_on"
             name="occurred_on"
@@ -78,15 +115,24 @@ export function TransactionForm({ categories }: { categories: Category[] }) {
             defaultValue={today}
           />
         </div>
-        <div className="grid gap-2">
-          <Label htmlFor="note">Note (optional)</Label>
-          <Input id="note" name="note" placeholder="e.g. Lunch" />
+        <div className="grid gap-1.5">
+          <Label htmlFor="note" className="text-xs text-muted-foreground">
+            Note
+          </Label>
+          <Input
+            id="note"
+            name="note"
+            placeholder="e.g. Lunch"
+            onKeyDown={submitOnEnter}
+          />
         </div>
       </div>
 
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && (
+        <p className="text-sm text-[color:var(--negative-ink)]">{state.error}</p>
+      )}
 
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending} className="w-full">
         {pending ? "Adding…" : "Add transaction"}
       </Button>
     </form>

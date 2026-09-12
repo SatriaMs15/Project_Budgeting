@@ -87,8 +87,8 @@ function parseDate(raw: string): string {
   }
   const dmy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
   if (dmy) {
-    let [, d, m, y] = dmy;
-    if (y.length === 2) y = `20${y}`;
+    const [, d, m, rawYear] = dmy;
+    const y = rawYear.length === 2 ? `20${rawYear}` : rawYear;
     return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
   }
   const parsed = new Date(s);

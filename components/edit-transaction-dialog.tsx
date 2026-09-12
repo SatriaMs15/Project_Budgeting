@@ -1,11 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import {
-  updateTransaction,
-  type FormState,
-} from "@/app/actions/transactions";
+import { useActionState, useState } from "react";
+import { Pencil } from "lucide-react";
+import { updateTransaction, type FormState } from "@/app/actions/transactions";
+import { KindToggle } from "@/components/kind-toggle";
 import { MoneyInput } from "@/components/money-input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,8 +22,7 @@ import type { Category, Kind, Transaction } from "@/lib/supabase/types";
 
 const initialState: FormState = { ts: 0 };
 
-const selectClass =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
+const labelClass = "text-xs text-muted-foreground";
 
 export function EditTransactionDialog({
   transaction,
@@ -39,10 +38,13 @@ export function EditTransactionDialog({
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<Kind>(transaction.kind);
 
-  // Close the dialog once a save succeeds.
-  useEffect(() => {
-    if (state.ts > 0 && !state.error) setOpen(false);
-  }, [state.ts, state.error]);
+  // Close the dialog once a save succeeds. Adjusted during render rather than
+  // in an effect, so React commits the close in the same pass.
+  const [lastTs, setLastTs] = useState(state.ts);
+  if (state.ts !== lastTs) {
+    setLastTs(state.ts);
+    if (!state.error) setOpen(false);
+  }
 
   const visibleCategories = categories.filter((c) => c.kind === kind);
 
@@ -50,45 +52,41 @@ export function EditTransactionDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         aria-label="Edit transaction"
-        className="rounded p-1 text-muted-foreground hover:text-foreground"
+        className="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] hover:text-foreground"
       >
-        ✎
+        <Pencil className="size-[13px]" strokeWidth={1.75} />
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Edit transaction</DialogTitle>
+          <DialogTitle className="font-heading text-[20px] font-semibold">
+            Edit transaction
+          </DialogTitle>
         </DialogHeader>
-        <form action={formAction} className="grid gap-4">
+        <form action={formAction} className="grid gap-3">
           <input type="hidden" name="id" value={transaction.id} />
           <input type="hidden" name="kind" value={kind} />
 
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setKind("expense")}
-              className={`rounded-md border px-3 py-2 text-sm font-medium transition ${
-                kind === "expense"
-                  ? "border-red-500 bg-red-50 text-red-700"
-                  : "text-muted-foreground"
-              }`}
-            >
-              Expense
-            </button>
-            <button
-              type="button"
-              onClick={() => setKind("income")}
-              className={`rounded-md border px-3 py-2 text-sm font-medium transition ${
-                kind === "income"
-                  ? "border-green-500 bg-green-50 text-green-700"
-                  : "text-muted-foreground"
-              }`}
-            >
-              Income
-            </button>
+          <KindToggle
+            name={`kind-${transaction.id}`}
+            value={kind}
+            onChange={setKind}
+          />
+
+          <div className="grid gap-1.5">
+            <Label htmlFor={`note-${transaction.id}`} className={labelClass}>
+              Description
+            </Label>
+            <Input
+              id={`note-${transaction.id}`}
+              name="note"
+              defaultValue={transaction.note ?? ""}
+            />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor={`amount-${transaction.id}`}>Amount</Label>
+          <div className="grid gap-1.5">
+            <Label htmlFor={`amount-${transaction.id}`} className={labelClass}>
+              Amount
+            </Label>
             <MoneyInput
               id={`amount-${transaction.id}`}
               name="amount"
@@ -97,25 +95,30 @@ export function EditTransactionDialog({
             />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor={`category-${transaction.id}`}>Category</Label>
-            <select
-              id={`category-${transaction.id}`}
-              name="category_id"
-              defaultValue={transaction.category_id ?? ""}
-              className={selectClass}
-            >
-              {visibleCategories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor={`date-${transaction.id}`}>Date</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label
+                htmlFor={`category-${transaction.id}`}
+                className={labelClass}
+              >
+                Category
+              </Label>
+              <NativeSelect
+                id={`category-${transaction.id}`}
+                name="category_id"
+                defaultValue={transaction.category_id ?? ""}
+              >
+                {visibleCategories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor={`date-${transaction.id}`} className={labelClass}>
+                Date
+              </Label>
               <Input
                 id={`date-${transaction.id}`}
                 name="occurred_on"
@@ -123,20 +126,16 @@ export function EditTransactionDialog({
                 defaultValue={transaction.occurred_on}
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor={`note-${transaction.id}`}>Note</Label>
-              <Input
-                id={`note-${transaction.id}`}
-                name="note"
-                defaultValue={transaction.note ?? ""}
-              />
-            </div>
           </div>
 
-          {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+          {state.error && (
+            <p className="text-sm text-[color:var(--negative-ink)]">
+              {state.error}
+            </p>
+          )}
 
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" type="button" />}>
+            <DialogClose render={<Button variant="secondary" type="button" />}>
               Cancel
             </DialogClose>
             <Button type="submit" disabled={pending}>

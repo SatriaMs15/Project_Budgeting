@@ -3,56 +3,89 @@
 import {
   Bar,
   BarChart,
-  CartesianGrid,
-  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { formatIDR, formatCompactIDR } from "@/lib/format";
+import { formatIDR } from "@/lib/format";
 import { CHART } from "@/lib/chart-colors";
 
 type Datum = { label: string; income: number; expense: number };
 
+/**
+ * Six-month income vs expense.
+ *
+ * Deliberately spare: no gridlines, no y-axis, a single hairline baseline and
+ * thin square-cornered bars. The rounded-pill bars a chart library gives you
+ * by default would read as UI chrome rather than as marks on a ledger page.
+ */
 export function MonthlyBarChart({ data }: { data: Datum[] }) {
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <BarChart data={data} margin={{ left: 8, right: 8, top: 8, bottom: 4 }}>
-        <CartesianGrid vertical={false} stroke={CHART.grid} />
-        <XAxis
-          dataKey="label"
-          tickLine={false}
-          axisLine={{ stroke: CHART.grid }}
-          tick={{ fill: CHART.muted, fontSize: 12 }}
-        />
-        <YAxis
-          width={56}
-          tickLine={false}
-          axisLine={false}
-          tick={{ fill: CHART.muted, fontSize: 11 }}
-          tickFormatter={(value) => formatCompactIDR(Number(value))}
-        />
-        <Tooltip
-          cursor={{ fill: "rgba(0,0,0,0.04)" }}
-          formatter={(value, name) => [formatIDR(Number(value)), name]}
-        />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar
-          dataKey="income"
-          name="Income"
-          fill={CHART.income}
-          radius={[4, 4, 0, 0]}
-          maxBarSize={26}
-        />
-        <Bar
-          dataKey="expense"
-          name="Expense"
-          fill={CHART.expense}
-          radius={[4, 4, 0, 0]}
-          maxBarSize={26}
-        />
-      </BarChart>
-    </ResponsiveContainer>
+    <div>
+      <ResponsiveContainer width="100%" height={186}>
+        <BarChart
+          data={data}
+          margin={{ left: 0, right: 0, top: 4, bottom: 0 }}
+          barGap={3}
+        >
+          <XAxis
+            dataKey="label"
+            tickLine={false}
+            axisLine={{ stroke: CHART.grid }}
+            tick={{ fill: CHART.muted, fontSize: 11.5 }}
+            dy={6}
+          />
+          <YAxis hide />
+          <Tooltip
+            cursor={{ fill: "color-mix(in srgb, #201f1d 4%, transparent)" }}
+            contentStyle={{
+              background: "#eae9e9",
+              border: "1px solid #d7d3d3",
+              borderRadius: 4,
+              fontSize: 12,
+            }}
+            labelStyle={{ color: CHART.secondary }}
+            formatter={(value, name) => [formatIDR(Number(value)), name]}
+          />
+          <Bar
+            dataKey="income"
+            name="Income"
+            fill={CHART.income}
+            barSize={15}
+            radius={[1, 1, 0, 0]}
+            isAnimationActive={false}
+          />
+          <Bar
+            dataKey="expense"
+            name="Expense"
+            fill={CHART.expense}
+            barSize={15}
+            radius={[1, 1, 0, 0]}
+            isAnimationActive={false}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+
+      {/* Swatch legend sits under the plot, in body type, not chart chrome. */}
+      <div className="mt-4 flex gap-5 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span
+            aria-hidden
+            className="size-2 rounded-full"
+            style={{ backgroundColor: CHART.income }}
+          />
+          Income
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            aria-hidden
+            className="size-2 rounded-full"
+            style={{ backgroundColor: CHART.expense }}
+          />
+          Expense
+        </span>
+      </div>
+    </div>
   );
 }

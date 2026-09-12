@@ -4,12 +4,7 @@ import { ensureDefaultCategories } from "@/lib/categories";
 import { materializeDueRecurring } from "@/lib/recurring";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionList } from "@/components/transaction-list";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default async function TransactionsPage() {
   await ensureDefaultCategories();
@@ -29,27 +24,28 @@ export default async function TransactionsPage() {
   const transactions = unwrap(transactionsRes, "load transactions");
 
   return (
-    <div className="grid gap-6 md:grid-cols-[minmax(0,340px)_1fr]">
-      <Card className="h-fit">
-        <CardHeader>
-          <CardTitle>Add transaction</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TransactionForm categories={categories} />
-        </CardContent>
-      </Card>
+    <div>
+      <h1 className="mb-7 font-heading text-[32px] font-semibold">
+        Transactions
+      </h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Form first in source order — on a narrow screen it stacks on top,
+          which is where the most-used control belongs. */}
+      <div className="grid items-start gap-7 lg:grid-cols-[340px_1fr]">
+        <Card className="elev-sm">
+          <CardContent>
+            <p className="kicker mb-2.5">New entry</p>
+            <TransactionForm categories={categories} />
+          </CardContent>
+        </Card>
+
+        <Card className="elev-sm py-0">
           <TransactionList
             transactions={transactions}
             categories={categories}
           />
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

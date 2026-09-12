@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="stylesheet" href="_ds/classical-e18d64f2-b369-4215-8bde-8a9dbe327dff/styles.css">
+<script src="_ds/classical-e18d64f2-b369-4215-8bde-8a9dbe327dff/_ds_bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  :root { --income: #1baf7a; --income-ink: #0d7a56; --expense: #2a78d6; --negative-ink: #a83e2a; }
+  @keyframes bk-spin { to { transform: rotate(360deg); } }
+  .bk-spin { animation: bk-spin 1.1s linear infinite; }
+  @media (max-width: 760px) {
+    .nav { flex-wrap: wrap; row-gap: 8px; }
+    .bk-2col { grid-template-columns: 1fr !important; }
+    .bk-stats { grid-template-columns: 1fr !important; row-gap: 16px; }
+    .bk-stats > div { padding: 12px 0 0 !important; border-left: none !important; border-top: 1px solid var(--color-divider); }
+    .bk-stats > div:first-child { border-top: none; padding-top: 0 !important; }
+    .bk-dashcols { grid-template-columns: 1fr !important; }
+    .bk-goalgrid { grid-template-columns: 1fr !important; }
+    .bk-artpad { padding: 24px 20px 32px !important; }
+  }
+</style>
+</helmet>
+
+<div style="font-family:var(--font-body);background:var(--color-bg);color:var(--color-text);min-height:100vh;padding-bottom:80px">
+
+  <div role="status" aria-live="polite" style="position:fixed;bottom:20px;right:20px;z-index:100;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+    <sc-for list="{{ toasts }}" as="tst" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:9px;padding:10px 16px;border-radius:var(--radius-md);background:var(--color-bg);border:1px solid var(--color-divider);border-left:3px solid {{ tst.color }};box-shadow:var(--shadow-lg);font-size:13.5px;min-width:220px">
+        <span>{{ tst.msg }}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- meta review nav -->
+  <div style="position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:6px;padding:14px 32px;background:color-mix(in srgb, var(--color-bg) 92%, transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--color-divider);flex-wrap:wrap">
+    <span style="font-family:var(--font-heading);font-weight:600;font-size:17px;margin-right:14px">Redesign review</span>
+    <a href="#style-sheet" style="font-size:12.5px;color:var(--color-text);text-decoration:none;padding:5px 10px;border-radius:4px;border:1px solid var(--color-divider)">Style sheet</a>
+    <a href="#dashboard" style="font-size:12.5px;color:var(--color-text);text-decoration:none;padding:5px 10px;border-radius:4px;border:1px solid var(--color-divider)">Dashboard</a>
+    <a href="#transactions" style="font-size:12.5px;color:var(--color-text);text-decoration:none;padding:5px 10px;border-radius:4px;border:1px solid var(--color-divider)">Transactions</a>
+    <a href="#budgets" style="font-size:12.5px;color:var(--color-text);text-decoration:none;padding:5px 10px;border-radius:4px;border:1px solid var(--color-divider)">Budgets</a>
+    <a href="#goals" style="font-size:12.5px;color:var(--color-text);text-decoration:none;padding:5px 10px;border-radius:4px;border:1px solid var(--color-divider)">Goals</a>
+    <a href="#recurring" style="font-size:12.5px;color:var(--color-text);text-decoration:none;padding:5px 10px;border-radius:4px;border:1px solid var(--color-divider)">Recurring</a>
+    <a href="#import" style="font-size:12.5px;color:var(--color-text);text-decoration:none;padding:5px 10px;border-radius:4px;border:1px solid var(--color-divider)">Import</a>
+    <a href="#error-state" style="font-size:12.5px;color:var(--color-text);text-decoration:none;padding:5px 10px;border-radius:4px;border:1px solid var(--color-divider)">Error state</a>
+  </div>
+
+  <!-- ============================= 1 — STYLE SHEET ============================= -->
+  <section id="style-sheet" style="max-width:1000px;margin:0 auto;padding:64px 40px 40px">
+    <h6 style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 10px">01 — Design direction, revised</h6>
+    <h1 style="font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:1.1;margin:0 0 20px;letter-spacing:-0.01em">A ledger, opened — not a dashboard, skinned</h1>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:40px;margin-bottom:36px">
+      <p style="font-size:16px;line-height:1.7;margin:0;text-align:justify">The first pass kept your app's bones — three KPI tiles, two chart cards — and just repainted them in Classical's palette. That's a re-skin, not a redesign. This pass rebuilds the two data-heavy screens as an actual ledger opening: month figures set as bare tabular numerals parted by hairlines instead of boxed tiles, spending-by-category as a numbered contents list with dotted leaders instead of progress bars, and the six-month trend keeps a grouped bar chart (the one place data marks are allowed to fill — bars need to compare at a glance) but thin and square-cornered rather than the rounded-pill bars a default chart library gives you. Everything now also loads the system's real stylesheet and classes (<code>.nav</code>, <code>.btn</code>, <code>.field</code>/<code>.input</code>, <code>.seg</code>, <code>.tag</code>) rather than hand-copied hex values.</p>
+      <div style="font-size:13px;line-height:1.65;color:color-mix(in srgb, var(--color-text) 78%, transparent);border-left:2px solid var(--color-divider);padding-left:16px">
+        <p style="margin:0 0 8px"><strong style="color:var(--color-text)">What changed structurally:</strong></p>
+        <p style="margin:0 0 8px">Tiles → a stat row of bare numerals, no rails, no icon chips.</p>
+        <p style="margin:0 0 8px">Grouped bar chart kept, but thin and square-edged, not the rounded-pill default.</p>
+        <p style="margin:0 0 8px">Progress-bar category list → a numbered ledger list with dotted leaders, like a table of contents.</p>
+        <p style="margin:0">Transaction rows → a proper register table (dated columns, outlined category tags) instead of card rows with colored dots.</p>
+      </div>
+    </div>
+    <button type="button" class="btn btn-secondary" onClick="{{ toggleStyleSheet }}" style="margin-bottom:8px">{{ styleSheetToggleLabel }}</button>
+    <hr class="hr">
+
+    <sc-if value="{{ showStyleSheet }}" hint-placeholder-val="{{ false }}">
+    <h2 style="font-family:var(--font-heading);font-weight:600;font-size:28px;margin:0 0 6px">Type</h2>
+    <p style="font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent);margin:0 0 20px">Cormorant Garamond for headings and figures with presence; Lora for prose and table data. Tabular figures via <code>font-variant-numeric: tabular-nums</code> on both faces — no third, monospace face.</p>
+    <div style="display:grid;gap:12px;margin-bottom:24px">
+      <div style="display:flex;align-items:baseline;gap:18px"><span style="font-family:var(--font-heading);font-weight:600;font-size:42px;line-height:1">Aa</span><span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent);width:170px">H1 / 42px — page titles</span></div>
+      <div style="display:flex;align-items:baseline;gap:18px"><span style="font-family:var(--font-heading);font-weight:600;font-size:32px;line-height:1">Aa</span><span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent);width:170px">H2 / 32px — sections</span></div>
+      <div style="display:flex;align-items:baseline;gap:18px"><span style="font-family:var(--font-heading);font-weight:600;font-size:25px;line-height:1">Aa</span><span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 55%, transparent);width:170px">H3 / 25px — card titles</span></div>
+      <div style="font-family:var(--font-body);font-size:15px;line-height:1">Body text, 15px / 1.55, Lora regular.</div>
+      <div style="font-family:var(--font-body);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent)">Kicker / 11px tracked</div>
+    </div>
+    <div class="card" style="max-width:none">
+      <p class="card-kicker">Tabular figures don't break on 8–9 digits</p>
+      <div style="display:grid;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">small</span><span style="font-family:var(--font-heading);font-weight:600;font-size:22px;font-variant-numeric:tabular-nums">Rp 50.000</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">salary</span><span style="font-family:var(--font-heading);font-weight:600;font-size:22px;font-variant-numeric:tabular-nums">Rp 8.500.000</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">stress test</span><span style="font-family:var(--font-heading);font-weight:600;font-size:22px;font-variant-numeric:tabular-nums">Rp 125.000.000</span></div>
+      </div>
+    </div>
+
+    <hr class="hr">
+    <h2 style="font-family:var(--font-heading);font-weight:600;font-size:28px;margin:0 0 6px">Color</h2>
+    <p style="font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent);margin:0 0 20px;max-width:760px">One accent (#b68235, stroke-only) plus the neutral ramp for everything, and two semantic hues reserved for money's polarity alone.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:24px">
+      <div>
+        <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 8px">Neutral ramp</p>
+        <div style="display:flex;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--color-divider)">
+          <sc-for list="{{ neutralRamp }}" as="s" hint-placeholder-count="9"><div style="flex:1;height:48px;background:{{ s.hex }}"></div></sc-for>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 8px">Accent ramp</p>
+        <div style="display:flex;border-radius:var(--radius-md);overflow:hidden;border:1px solid var(--color-divider)">
+          <sc-for list="{{ accentRamp }}" as="s" hint-placeholder-count="9"><div style="flex:1;height:48px;background:{{ s.hex }}"></div></sc-for>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="max-width:none;margin-bottom:14px">
+      <p class="card-kicker">Money polarity — the one hard constraint</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="width:13px;height:13px;border-radius:50%;background:var(--income);flex:none;margin-top:3px"></span>
+          <div><p style="margin:0;font-size:14px;font-weight:600">Income — #1baf7a</p><p style="margin:2px 0 0;font-size:12.5px;color:color-mix(in srgb, var(--color-text) 68%, transparent)">exact hue for dots/lines. On white text drops to 2.8:1, so numerals use a deepened ink of the same hue, #0d7a56 (5.3:1).</p></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="width:13px;height:13px;border-radius:50%;background:var(--expense);flex:none;margin-top:3px"></span>
+          <div><p style="margin:0;font-size:14px;font-weight:600">Expense — #2a78d6</p><p style="margin:2px 0 0;font-size:12.5px;color:color-mix(in srgb, var(--color-text) 68%, transparent)">unchanged everywhere, incl. as text (4.4:1). Colorblind-safe pair, never green/red.</p></div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:12.5px;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin:0 0 20px;max-width:760px">The 10 category marks are muted editorial tones (not the original saturated Tailwind hues) and now read as outlined tags, not filled dots. Income-kind categories reuse the income ink.</p>
+
+    <hr class="hr">
+    <h2 style="font-family:var(--font-heading);font-weight:600;font-size:28px;margin:0 0 6px">Components</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:20px">
+      <div class="card">
+        <p class="card-kicker">Buttons</p>
+        <div style="display:flex;flex-direction:column;gap:8px"><button type="button" class="btn btn-primary">Primary action</button><button type="button" class="btn btn-secondary">Secondary</button></div>
+      </div>
+      <div class="card">
+        <p class="card-kicker">Field</p>
+        <div class="field"><label>Amount</label><input class="input" placeholder="Rp 0"></div>
+      </div>
+      <div class="card">
+        <p class="card-kicker">Segmented + tag</p>
+        <div class="seg" style="margin-bottom:10px"><label class="seg-opt"><input type="radio" name="ss" checked><span>Expense</span></label><label class="seg-opt"><input type="radio" name="ss"><span>Income</span></label></div>
+        <span class="tag tag-outline" style="border-color:#a1584a;color:#a1584a">Food &amp; Drink</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <div>
+        <p style="margin:0 0 8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-700)">Ledger list row</p>
+        <div style="border-bottom:1px solid var(--color-divider);padding:10px 0;display:flex;align-items:baseline;gap:10px">
+          <span style="font-family:var(--font-heading);font-size:13px;color:var(--color-accent-700);width:18px">01</span>
+          <span style="font-size:14px">Food &amp; Drink</span>
+          <span style="flex:1;border-bottom:1px dotted var(--color-divider);transform:translateY(-4px)"></span>
+          <span style="font-size:14px;font-variant-numeric:tabular-nums">Rp 2.150.000</span>
+        </div>
+      </div>
+      <div>
+        <p style="margin:0 0 8px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-700)">Progress — under / near / over</p>
+        <div style="display:grid;gap:10px">
+          <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Under</span><span style="color:color-mix(in srgb, var(--color-text) 55%, transparent)">62%</span></div><div style="height:3px;background:var(--color-divider);border-radius:2px;overflow:hidden"><div style="width:62%;height:100%;background:var(--income-ink)"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Near</span><span style="color:color-mix(in srgb, var(--color-text) 55%, transparent)">88%</span></div><div style="height:3px;background:var(--color-divider);border-radius:2px;overflow:hidden"><div style="width:88%;height:100%;background:var(--color-accent)"></div></div></div>
+          <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Over</span><span style="color:color-mix(in srgb, var(--color-text) 55%, transparent)">108%</span></div><div style="height:3px;background:var(--color-divider);border-radius:2px;overflow:hidden"><div style="width:100%;height:100%;background:var(--negative-ink)"></div></div></div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+  </section>
+
+  <!-- ============================= 2 — DASHBOARD ============================= -->
+  <section id="dashboard" style="padding:40px 0 20px">
+    <div style="max-width:1000px;margin:0 auto;padding:0 40px 20px">
+      <h6 style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 6px">02 — Screen</h6>
+      <h2 style="font-family:var(--font-heading);font-weight:600;font-size:30px;margin:0">Dashboard <span style="font-size:15px;font-family:var(--font-body);font-weight:400;color:color-mix(in srgb, var(--color-text) 50%, transparent)">— desktop, 1280px</span></h2>
+    </div>
+    <div style="max-width:1280px;margin:0 auto;overflow-x:auto">
+    <div style="max-width:1280px;width:100%;margin:0 auto;background:var(--color-bg);border:1px solid var(--color-divider);box-shadow:var(--shadow-md)">
+      <nav class="nav">
+        <span class="nav-brand">Buku Kas</span>
+        <a href="#" aria-current="page">Dashboard</a><a href="#">Transactions</a><a href="#">Budgets</a><a href="#">Goals</a><a href="#">Recurring</a><a href="#">Import</a>
+      </nav>
+      <div class="bk-artpad" style="padding:36px 40px 44px">
+        <p style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 4px">Dashboard</p>
+        <h1 style="font-family:var(--font-heading);font-weight:600;font-size:38px;margin:0 0 32px">September 2026</h1>
+
+        <!-- stat row -->
+        <div class="bk-stats" style="display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:32px">
+          <div style="padding-right:32px">
+            <p style="display:flex;align-items:center;gap:7px;margin:0;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 60%, transparent)"><span style="width:7px;height:7px;border-radius:50%;background:var(--income)"></span>Income</p>
+            <p style="margin:8px 0 0;font-family:var(--font-heading);font-weight:600;font-size:34px;font-variant-numeric:tabular-nums;color:var(--income-ink)">+Rp 8.500.000</p>
+          </div>
+          <div style="padding:0 32px;border-left:1px solid var(--color-divider)">
+            <p style="display:flex;align-items:center;gap:7px;margin:0;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 60%, transparent)"><span style="width:7px;height:7px;border-radius:50%;background:var(--expense)"></span>Expenses</p>
+            <p style="margin:8px 0 0;font-family:var(--font-heading);font-weight:600;font-size:34px;font-variant-numeric:tabular-nums;color:var(--expense)">−Rp 6.950.000</p>
+          </div>
+          <div style="padding-left:32px;border-left:1px solid var(--color-divider)">
+            <p style="display:flex;align-items:center;gap:7px;margin:0;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 60%, transparent)"><span style="width:7px;height:7px;border-radius:50%;background:var(--income-ink)"></span>Net</p>
+            <p style="margin:8px 0 0;font-family:var(--font-heading);font-weight:600;font-size:34px;font-variant-numeric:tabular-nums;color:var(--income-ink)">+Rp 1.550.000</p>
+          </div>
+        </div>
+        <hr class="hr" style="margin:0 0 32px">
+
+        <div class="bk-dashcols" style="display:grid;grid-template-columns:1.1fr 1fr;gap:48px">
+          <!-- stem chart -->
+          <div>
+            <h3 style="font-family:var(--font-heading);font-weight:600;font-size:19px;margin:0 0 20px">Income vs expense — six months</h3>
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px;height:150px;border-bottom:1px solid var(--color-divider)">
+              <sc-for list="{{ monthlyBars }}" as="b" hint-placeholder-count="6">
+                <div style="flex:1;display:flex;align-items:flex-end;justify-content:center;gap:3px;height:150px">
+                  <div style="width:15px;background:var(--income);height:{{ b.incomeH }}px;border-radius:1px 1px 0 0"></div>
+                  <div style="width:15px;background:var(--expense);height:{{ b.expenseH }}px;border-radius:1px 1px 0 0"></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px">
+              <sc-for list="{{ monthlyBars }}" as="b" hint-placeholder-count="6"><span style="flex:1;text-align:center;font-size:11.5px;color:color-mix(in srgb, var(--color-text) 55%, transparent)">{{ b.label }}</span></sc-for>
+            </div>
+            <div style="display:flex;gap:20px;margin-top:16px;font-size:12px;color:color-mix(in srgb, var(--color-text) 65%, transparent)">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--income)"></span>Income</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--expense)"></span>Expense</span>
+            </div>
+          </div>
+
+          <!-- category ledger list -->
+          <div>
+            <h3 style="font-family:var(--font-heading);font-weight:600;font-size:19px;margin:0 0 20px">Spending by category · September</h3>
+            <div>
+              <sc-for list="{{ categorySpend }}" as="c" hint-placeholder-count="7">
+                <div style="padding:9px 0;border-bottom:1px solid var(--color-divider)">
+                  <div style="display:flex;align-items:baseline;gap:10px">
+                    <span style="font-family:var(--font-heading);font-size:13px;color:var(--color-accent-700);width:18px;flex:none">{{ c.rank }}</span>
+                    <span style="font-size:14px;flex:none;white-space:nowrap">{{ c.name }}</span>
+                    <span style="flex:1;border-bottom:1px dotted var(--color-divider);transform:translateY(-4px)"></span>
+                    <span style="font-size:14px;font-variant-numeric:tabular-nums;flex:none">{{ c.amountFmt }}</span>
+                  </div>
+                  <div style="height:2px;background:var(--color-divider);border-radius:1px;margin-top:6px;margin-left:28px;overflow:hidden"><div style="height:100%;width:{{ c.pct }}%;background:{{ c.color }}"></div></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    <div style="max-width:1000px;margin:20px auto 0;padding:0 40px">
+      <p style="font-size:13px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 65%, transparent);margin:0"><strong style="color:var(--color-text)">Collapse below ~640px:</strong> the three stat columns stack (dividers become horizontal hairlines above each); the stem chart and the ledger list stack in the same order, each keeping full width so the dotted leaders and month labels don't compress.</p>
+    </div>
+  </section>
+
+  <!-- ============================= DASHBOARD EMPTY STATE ============================= -->
+  <section style="padding:0 0 20px">
+    <div style="max-width:1000px;margin:0 auto;padding:0 40px 20px"><h6 style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-700);margin:0">Dashboard — empty state</h6></div>
+    <div style="max-width:1280px;margin:0 auto;overflow-x:auto"><div style="max-width:1280px;width:100%;margin:0 auto;background:var(--color-bg);border:1px solid var(--color-divider)">
+      <div style="padding:80px 24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center">
+        <span style="width:52px;height:52px;border-radius:50%;border:1px solid var(--color-accent);display:flex;align-items:center;justify-content:center"><i class="lu" data-lucide="book-open" width="22" height="22" stroke-width="1.5" color="var(--color-accent-700)"></i></span>
+        <p style="font-size:14px;color:color-mix(in srgb, var(--color-text) 65%, transparent);margin:0;max-width:320px">No transactions yet. Add a few to open this month's ledger.</p>
+        <button type="button" class="btn btn-primary">Add your first transaction</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ============================= 3 — TRANSACTIONS ============================= -->
+  <section id="transactions" style="padding:20px 0 20px">
+    <div style="max-width:1000px;margin:0 auto;padding:0 40px 20px">
+      <h6 style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 6px">03 — Screen</h6>
+      <h2 style="font-family:var(--font-heading);font-weight:600;font-size:30px;margin:0">Transactions <span style="font-size:15px;font-family:var(--font-body);font-weight:400;color:color-mix(in srgb, var(--color-text) 50%, transparent)">— desktop, 1280px</span></h2>
+    </div>
+    <div style="max-width:1280px;margin:0 auto;overflow-x:auto">
+    <div style="max-width:1280px;width:100%;margin:0 auto;background:var(--color-bg);border:1px solid var(--color-divider);box-shadow:var(--shadow-md)">
+      <nav class="nav">
+        <span class="nav-brand">Buku Kas</span>
+        <a href="#">Dashboard</a><a href="#" aria-current="page">Transactions</a><a href="#">Budgets</a><a href="#">Goals</a><a href="#">Recurring</a><a href="#">Import</a>
+      </nav>
+      <div class="bk-artpad" style="padding:36px 40px 44px">
+        <h1 style="font-family:var(--font-heading);font-weight:600;font-size:32px;margin:0 0 28px">Transactions</h1>
+        <div class="bk-2col" style="display:grid;grid-template-columns:340px 1fr;gap:28px;align-items:start">
+
+          <div class="card elev-sm">
+            <p class="card-kicker">New entry</p>
+            <div style="display:grid;gap:14px;margin-top:6px">
+              <div class="seg"><label class="seg-opt"><input type="radio" name="txkind" checked="{{ formIsExpense }}" onChange="{{ setKindExpense }}"><span>Expense</span></label><label class="seg-opt"><input type="radio" name="txkind" checked="{{ !formIsExpense }}" onChange="{{ setKindIncome }}"><span>Income</span></label></div>
+              <div class="field">
+                <label>Amount</label>
+                <input class="input" placeholder="Rp 0" value="{{ form.amount }}" onChange="{{ onAmountChange }}" onKeyDown="{{ onAmountKeyDown }}" ref="{{ amountInputRef }}" autoFocus="{{ true }}">
+                <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+                  <sc-for list="{{ quickAmounts }}" as="qa" hint-placeholder-count="4">
+                    <button type="button" class="tag tag-outline" style="cursor:pointer;border:1px solid var(--color-divider);color:color-mix(in srgb, var(--color-text) 70%, transparent);background:transparent" onClick="{{ qa.onClick }}">{{ qa.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div class="field"><label>Category</label><select class="input" value="{{ form.category }}" onChange="{{ onCategoryChange }}"><sc-for list="{{ formCategoryOptions }}" as="opt" hint-placeholder-count="7"><option value="{{ opt.name }}">{{ opt.name }}</option></sc-for></select></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="field"><label>Date</label><input class="input" value="{{ form.date }}" onChange="{{ onDateChange }}"></div>
+                <div class="field"><label>Note</label><input class="input" placeholder="e.g. Lunch" value="{{ form.note }}" onChange="{{ onNoteChange }}" onKeyDown="{{ onAmountKeyDown }}"></div>
+              </div>
+              <button type="button" class="btn btn-primary btn-block" onClick="{{ onAdd }}">Add transaction</button>
+            </div>
+          </div>
+
+          <div class="card elev-sm" style="padding:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--color-divider)">
+              <p style="margin:0;font-family:var(--font-heading);font-weight:600;font-size:19px">Register</p>
+              <span style="font-size:12px;color:color-mix(in srgb, var(--color-text) 50%, transparent)">{{ txCountLabel }}</span>
+            </div>
+            <div style="overflow-x:auto">
+            <div style="display:grid;grid-template-columns:92px 1fr 150px 130px 66px;gap:12px;padding:10px 22px;border-bottom:1px solid var(--color-divider);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);min-width:560px">
+              <span>Date</span><span>Description</span><span>Category</span><span style="text-align:right">Amount</span><span></span>
+            </div>
+            <div style="max-height:480px;overflow-y:auto;min-width:560px">
+              <sc-for list="{{ transactions }}" as="t" hint-placeholder-count="9">
+                <div style="display:grid;grid-template-columns:92px 1fr 150px 130px 66px;gap:12px;align-items:center;padding:11px 22px;border-bottom:1px solid var(--color-divider)" style-hover="background:color-mix(in srgb, var(--color-text) 4%, transparent)">
+                  <span style="font-size:12.5px;font-variant-numeric:tabular-nums;color:color-mix(in srgb, var(--color-text) 60%, transparent)">{{ t.date }}</span>
+                  <span style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.desc }}</span>
+                  <span class="tag tag-outline" style="border-color:{{ t.color }};color:{{ t.color }};width:fit-content">{{ t.category }}</span>
+                  <span style="text-align:right;font-variant-numeric:tabular-nums;font-size:14px;font-weight:600;color:{{ t.textColor }}">{{ t.amountFmt }}</span>
+                  <span style="display:flex;justify-content:flex-end;gap:4px">
+                    <button type="button" class="btn btn-icon" aria-label="Edit" onClick="{{ t.onEdit }}"><i class="lu" data-lucide="pencil" width="13" height="13" stroke-width="1.75"></i></button>
+                    <button type="button" class="btn btn-icon" aria-label="Delete" style="color:var(--negative-ink)" onClick="{{ t.onDelete }}"><i class="lu" data-lucide="trash-2" width="13" height="13" stroke-width="1.75"></i></button>
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+            </div>
+            <sc-if value="{{ txHasMore }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:12px 22px;border-top:1px solid var(--color-divider);text-align:center"><button type="button" class="btn btn-ghost" onClick="{{ showMoreTx }}">Load more</button></div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    <div style="max-width:1000px;margin:20px auto 0;padding:0 40px">
+      <p style="font-size:13px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 65%, transparent);margin:0"><strong style="color:var(--color-text)">Collapse below ~700px:</strong> form stacks above the register (used most, stays reachable first). The register's 5-column grid holds down to ~360px — only Description ellipsizes; Amount and Actions are fixed-width so figures never truncate.</p>
+    </div>
+
+    <sc-if value="{{ dialogOpen }}" hint-placeholder-val="{{ false }}">
+      <div class="dialog-backdrop" style="position:fixed" onClick="{{ closeEdit }}">
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="edit-tx-title" onClick="{{ stopClickPropagation }}">
+          <div class="dialog-title" id="edit-tx-title">Edit transaction</div>
+          <div class="dialog-body" style="display:grid;gap:12px;text-align:left">
+            <div class="field"><label>Description</label><input class="input" value="{{ dialogTx.desc }}" onChange="{{ onDialogDescChange }}"></div>
+            <div class="field"><label>Amount</label><input class="input" value="{{ dialogTx.amount }}" onChange="{{ onDialogAmountChange }}"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="field"><label>Category</label><select class="input" value="{{ dialogTx.category }}" onChange="{{ onDialogCategoryChange }}"><sc-for list="{{ dialogCategoryOptions }}" as="opt" hint-placeholder-count="7"><option value="{{ opt.name }}">{{ opt.name }}</option></sc-for></select></div>
+              <div class="field"><label>Date</label><input class="input" value="{{ dialogTx.date }}" onChange="{{ onDialogDateChange }}"></div>
+            </div>
+          </div>
+          <div class="dialog-actions">
+            <button type="button" class="btn btn-secondary" onClick="{{ closeEdit }}">Cancel</button>
+            <button type="button" class="btn btn-primary" onClick="{{ saveEdit }}">Save</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </section>
+
+  <!-- ============================= 4 — BUDGETS ============================= -->
+  <section id="budgets" style="padding:20px 0 20px">
+    <div style="max-width:1000px;margin:0 auto;padding:0 40px 20px">
+      <h6 style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 6px">04 — Screen</h6>
+      <h2 style="font-family:var(--font-heading);font-weight:600;font-size:30px;margin:0">Budgets <span style="font-size:15px;font-family:var(--font-body);font-weight:400;color:color-mix(in srgb, var(--color-text) 50%, transparent)">— desktop, 1280px</span></h2>
+    </div>
+    <div style="max-width:1280px;margin:0 auto;overflow-x:auto">
+    <div style="max-width:1280px;width:100%;margin:0 auto;background:var(--color-bg);border:1px solid var(--color-divider);box-shadow:var(--shadow-md)">
+      <nav class="nav"><span class="nav-brand">Buku Kas</span><a href="#">Dashboard</a><a href="#">Transactions</a><a href="#" aria-current="page">Budgets</a><a href="#">Goals</a><a href="#">Recurring</a><a href="#">Import</a></nav>
+      <div class="bk-artpad" style="padding:36px 40px 44px">
+        <h1 style="font-family:var(--font-heading);font-weight:600;font-size:32px;margin:0 0 4px">Budgets</h1>
+        <p style="font-size:14px;color:color-mix(in srgb, var(--color-text) 60%, transparent);margin:0 0 28px">Monthly spending limits for September 2026</p>
+
+        <div class="card elev-sm">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+            <p class="card-kicker" style="margin:0">Overall</p>
+            <span style="font-size:13px;font-variant-numeric:tabular-nums;color:var(--negative-ink);white-space:nowrap">Rp 6.950.000 of Rp 6.400.000 budgeted</span>
+          </div>
+          <p style="margin:0 0 14px;font-size:12.5px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">{{ overBudgetLabel }}</p>
+          <div style="height:4px;background:var(--color-divider);border-radius:2px;overflow:hidden;margin-bottom:20px"><div style="height:100%;width:100%;background:var(--negative-ink)"></div></div>
+
+          <div style="overflow-x:auto">
+          <div style="display:grid;grid-template-columns:130px 1fr 220px 210px;gap:16px;padding-bottom:10px;border-bottom:1px solid var(--color-divider);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);min-width:660px">
+            <span>Category</span><span>Progress</span><span style="text-align:right">Status</span><span style="text-align:right">Limit</span>
+          </div>
+          <sc-for list="{{ budgetRows }}" as="r" hint-placeholder-count="7">
+            <div style="display:grid;grid-template-columns:130px 1fr 220px 210px;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid var(--color-divider);min-width:660px">
+              <span style="font-size:13.5px;font-weight:600">{{ r.name }}</span>
+              <div style="height:4px;background:var(--color-divider);border-radius:2px;overflow:hidden"><div style="height:100%;width:{{ r.widthPct }}%;background:{{ r.barColor }}"></div></div>
+              <span style="text-align:right;font-size:13px;font-variant-numeric:tabular-nums"><span style="color:{{ r.barColor }};font-weight:600">{{ r.statusLabel }}</span> · {{ r.spentLabel }}</span>
+              <span style="text-align:right;display:flex;justify-content:flex-end;gap:8px;align-items:center">
+                <input class="input" style="width:100px;text-align:right;height:30px" value="{{ r.draft }}" onChange="{{ r.onDraftChange }}" placeholder="Rp 0">
+                <button type="button" class="btn btn-secondary" style="height:30px;padding:0 10px" onClick="{{ r.onSave }}">Save</button>
+              </span>
+            </div>
+          </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    <div style="max-width:1000px;margin:20px auto 0;padding:0 40px">
+      <p style="font-size:13px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 65%, transparent);margin:0"><strong style="color:var(--color-text)">Collapse below ~640px:</strong> the four-column row (name / bar / spent / limit) drops to two lines per category — name and spent-of-limit on top, the progress bar and the limit field beneath, full width.</p>
+    </div>
+  </section>
+
+  <!-- ============================= 5 — GOALS ============================= -->
+  <section id="goals" style="padding:20px 0 20px">
+    <div style="max-width:1000px;margin:0 auto;padding:0 40px 20px">
+      <h6 style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 6px">05 — Screen</h6>
+      <h2 style="font-family:var(--font-heading);font-weight:600;font-size:30px;margin:0">Goals <span style="font-size:15px;font-family:var(--font-body);font-weight:400;color:color-mix(in srgb, var(--color-text) 50%, transparent)">— desktop, 1280px</span></h2>
+    </div>
+    <div style="max-width:1280px;margin:0 auto;overflow-x:auto">
+    <div style="max-width:1280px;width:100%;margin:0 auto;background:var(--color-bg);border:1px solid var(--color-divider);box-shadow:var(--shadow-md)">
+      <nav class="nav"><span class="nav-brand">Buku Kas</span><a href="#">Dashboard</a><a href="#">Transactions</a><a href="#">Budgets</a><a href="#" aria-current="page">Goals</a><a href="#">Recurring</a><a href="#">Import</a></nav>
+      <div class="bk-artpad" style="padding:36px 40px 44px">
+        <h1 style="font-family:var(--font-heading);font-weight:600;font-size:32px;margin:0 0 28px">Goals</h1>
+        <div class="bk-2col" style="display:grid;grid-template-columns:320px 1fr;gap:28px;align-items:start">
+          <div class="card elev-sm">
+            <p class="card-kicker">New savings goal</p>
+            <div style="display:grid;gap:14px;margin-top:6px">
+              <div class="field"><label>Name</label><input class="input" placeholder="e.g. New phone"></div>
+              <div class="field"><label>Target amount</label><input class="input" placeholder="Rp 0"></div>
+              <div class="field"><label>Target date (optional)</label><input class="input" placeholder="dd/mm/yyyy"></div>
+              <button type="button" class="btn btn-primary btn-block">Create goal</button>
+            </div>
+          </div>
+          <div class="bk-goalgrid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+            <sc-for list="{{ goals }}" as="g" hint-placeholder-count="4">
+              <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:baseline">
+                  <p class="card-title">{{ g.name }}</p>
+                  <button type="button" class="btn btn-icon" aria-label="Delete goal" style="color:var(--negative-ink)"><i class="lu" data-lucide="x" width="13" height="13" stroke-width="1.75"></i></button>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 8px;font-variant-numeric:tabular-nums">
+                  <span style="font-family:var(--font-heading);font-weight:600;font-size:20px;white-space:nowrap">{{ g.savedFmt }}</span>
+                  <span style="font-size:12.5px;color:color-mix(in srgb, var(--color-text) 55%, transparent);white-space:nowrap">of {{ g.targetFmt }}</span>
+                </div>
+                <div style="height:3px;background:var(--color-divider);border-radius:2px;overflow:hidden;margin:8px 0"><div style="height:100%;width:{{ g.pct }}%;background:{{ g.color }}"></div></div>
+                <p class="card-body" style="margin-bottom:8px">{{ g.statusText }}</p>
+                <sc-if value="{{ g.notDone }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;gap:8px"><input class="input" placeholder="Rp 0" style="flex:1" value="{{ g.draft }}" onChange="{{ g.onDraftChange }}"><button type="button" class="btn btn-secondary" onClick="{{ g.onAdd }}">Add</button></div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    <div style="max-width:1000px;margin:20px auto 0;padding:0 40px">
+      <p style="font-size:13px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 65%, transparent);margin:0"><strong style="color:var(--color-text)">Collapse below ~760px:</strong> the form stacks above the grid; the 2-per-row goal grid drops to one column — cards keep their internal layout unchanged.</p>
+    </div>
+  </section>
+
+  <!-- ============================= 6 — RECURRING ============================= -->
+  <section id="recurring" style="padding:20px 0 20px">
+    <div style="max-width:1000px;margin:0 auto;padding:0 40px 20px">
+      <h6 style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 6px">06 — Screen</h6>
+      <h2 style="font-family:var(--font-heading);font-weight:600;font-size:30px;margin:0">Recurring <span style="font-size:15px;font-family:var(--font-body);font-weight:400;color:color-mix(in srgb, var(--color-text) 50%, transparent)">— desktop, 1280px</span></h2>
+    </div>
+    <div style="max-width:1280px;margin:0 auto;overflow-x:auto">
+    <div style="max-width:1280px;width:100%;margin:0 auto;background:var(--color-bg);border:1px solid var(--color-divider);box-shadow:var(--shadow-md)">
+      <nav class="nav"><span class="nav-brand">Buku Kas</span><a href="#">Dashboard</a><a href="#">Transactions</a><a href="#">Budgets</a><a href="#">Goals</a><a href="#" aria-current="page">Recurring</a><a href="#">Import</a></nav>
+      <div class="bk-artpad" style="padding:36px 40px 44px">
+        <h1 style="font-family:var(--font-heading);font-weight:600;font-size:32px;margin:0 0 28px">Recurring</h1>
+        <div class="bk-2col" style="display:grid;grid-template-columns:340px 1fr;gap:28px;align-items:start">
+          <div class="card elev-sm">
+            <p class="card-kicker">New recurring item</p>
+            <div style="display:grid;gap:14px;margin-top:6px">
+              <div class="seg"><label class="seg-opt"><input type="radio" name="rk" checked><span>Expense</span></label><label class="seg-opt"><input type="radio" name="rk"><span>Income</span></label></div>
+              <div class="field"><label>Description</label><input class="input" placeholder="e.g. Rent"></div>
+              <div class="field"><label>Amount</label><input class="input" placeholder="Rp 0"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="field"><label>Category</label><select class="input"><sc-for list="{{ allCategoryOptions }}" as="opt" hint-placeholder-count="10"><option value="{{ opt.name }}">{{ opt.name }}</option></sc-for></select></div>
+                <div class="field"><label>Cadence</label><input class="input" value="Monthly"></div>
+              </div>
+              <div class="field"><label>Starts on</label><input class="input" placeholder="dd/mm/yyyy"></div>
+              <button type="button" class="btn btn-primary btn-block">Create rule</button>
+            </div>
+          </div>
+          <div class="card elev-sm" style="padding:0">
+            <div style="overflow-x:auto">
+            <div style="display:grid;grid-template-columns:1fr 130px 130px 110px 130px 60px;gap:12px;padding:14px 22px;border-bottom:1px solid var(--color-divider);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);min-width:640px">
+              <span>Description</span><span>Category</span><span style="text-align:right">Amount</span><span>Cadence</span><span>Next run</span><span></span>
+            </div>
+            <sc-for list="{{ recurringItems }}" as="r" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:1fr 130px 130px 110px 130px 60px;gap:12px;align-items:center;padding:14px 22px;border-bottom:1px solid var(--color-divider);min-width:640px" style-hover="background:color-mix(in srgb, var(--color-text) 4%, transparent)">
+                <span style="font-size:13.5px;font-weight:600">{{ r.desc }}</span>
+                <span class="tag tag-outline" style="border-color:{{ r.color }};color:{{ r.color }};width:fit-content">{{ r.category }}</span>
+                <span style="text-align:right;font-variant-numeric:tabular-nums;font-size:14px;font-weight:600;color:{{ r.textColor }}">{{ r.amountFmt }}</span>
+                <span style="font-size:13px;color:color-mix(in srgb, var(--color-text) 65%, transparent)">{{ r.cadence }}</span>
+                <span style="font-size:13px;font-variant-numeric:tabular-nums">{{ r.next }}</span>
+                <button type="button" class="btn btn-icon" aria-label="Stop {{ r.desc }}" onClick="{{ r.onStop }}" style="color:var(--negative-ink)"><i class="lu" data-lucide="octagon-x" width="13" height="13" stroke-width="1.75"></i></button>
+              </div>
+            </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    <div style="max-width:1000px;margin:20px auto 0;padding:0 40px">
+      <p style="font-size:13px;line-height:1.6;color:color-mix(in srgb, var(--color-text) 65%, transparent);margin:0"><strong style="color:var(--color-text)">Collapse below ~760px:</strong> form stacks above the list; the 6-column row collapses to description + amount on one line, category/cadence/next-run as a small muted line beneath.</p>
+    </div>
+  </section>
+
+  <!-- ============================= 7 — IMPORT ============================= -->
+  <section id="import" style="padding:20px 0 20px">
+    <div style="max-width:1000px;margin:0 auto;padding:0 40px 20px">
+      <h6 style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 6px">07 — Screen</h6>
+      <h2 style="font-family:var(--font-heading);font-weight:600;font-size:30px;margin:0">Import <span style="font-size:15px;font-family:var(--font-body);font-weight:400;color:color-mix(in srgb, var(--color-text) 50%, transparent)">— desktop, 1280px, four states</span></h2>
+    </div>
+    <div style="max-width:1280px;margin:0 auto;overflow-x:auto">
+    <div style="max-width:1280px;width:100%;margin:0 auto;background:var(--color-bg);border:1px solid var(--color-divider);box-shadow:var(--shadow-md)">
+      <nav class="nav"><span class="nav-brand">Buku Kas</span><a href="#">Dashboard</a><a href="#">Transactions</a><a href="#">Budgets</a><a href="#">Goals</a><a href="#">Recurring</a><a href="#" aria-current="page">Import</a></nav>
+      <div style="padding:36px 40px 60px;display:grid;gap:16px">
+        <h1 style="font-family:var(--font-heading);font-weight:600;font-size:32px;margin:0">Import</h1>
+        <p style="font-size:12.5px;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin:0 0 20px">Live demo — click through the flow.</p>
+
+        <sc-if value="{{ isIdle }}" hint-placeholder-val="{{ true }}">
+          <div class="card" style="border-style:dashed;align-items:center;text-align:center;padding:44px 20px">
+            <span style="width:44px;height:44px;border-radius:50%;border:1px solid var(--color-accent);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i class="lu" data-lucide="upload-cloud" width="19" height="19" stroke-width="1.5" color="var(--color-accent-700)"></i></span>
+            <p style="margin:0 0 4px;font-size:14px;font-weight:600">Drop a bank statement here</p>
+            <p style="margin:0 0 14px;font-size:12.5px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">PDF or CSV, up to 10MB</p>
+            <div style="display:flex;gap:10px;justify-content:center">
+              <button type="button" class="btn btn-secondary" onClick="{{ startImportDemo }}">Browse files</button>
+              <button type="button" class="btn btn-ghost" onClick="{{ simulateImportError }}">Simulate a parse error</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isExtracting }}" hint-placeholder-val="{{ false }}">
+          <div class="card" style="align-items:center;text-align:center;padding:44px 20px">
+            <i class="lu bk-spin" data-lucide="loader-2" width="26" height="26" stroke-width="1.5" color="var(--color-accent)" style="margin:0 auto 12px"></i>
+            <p style="margin:0 0 4px;font-size:14px;font-weight:600">Reading statement.pdf</p>
+            <p style="margin:0;font-size:12.5px;color:color-mix(in srgb, var(--color-text) 60%, transparent)">This can take up to a minute.</p>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+          <div class="card" style="padding:0">
+            <div style="padding:16px 22px;border-bottom:1px solid var(--color-divider);font-size:13px;color:color-mix(in srgb, var(--color-text) 65%, transparent)">4 transactions found. Edit anything that looks off, then import.</div>
+            <div style="overflow-x:auto">
+            <div style="display:grid;grid-template-columns:100px 1fr 130px 110px 160px 70px;gap:12px;padding:12px 22px;border-bottom:1px solid var(--color-divider);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);min-width:660px">
+              <span>Date</span><span>Description</span><span style="text-align:right">Amount</span><span>Kind</span><span>Category</span><span></span>
+            </div>
+            <sc-for list="{{ importRows }}" as="r" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:100px 1fr 130px 110px 160px 70px;gap:12px;align-items:center;padding:12px 22px;border-bottom:1px solid var(--color-divider);min-width:660px">
+                <span style="font-size:12.5px;font-variant-numeric:tabular-nums">{{ r.date }}</span>
+                <span style="font-size:13px">{{ r.desc }}</span>
+                <span style="text-align:right;font-variant-numeric:tabular-nums;font-size:13.5px;font-weight:600;color:{{ r.textColor }}">{{ r.amountFmt }}</span>
+                <span class="tag tag-outline" style="border-color:{{ r.kindColor }};color:{{ r.kindColor }};width:fit-content">{{ r.kind }}</span>
+                <div>
+                  <select class="input" style="height:30px" value="{{ r.category }}" onChange="{{ r.onCategoryChange }}"><sc-for list="{{ r.categoryOptions }}" as="opt" hint-placeholder-count="7"><option value="{{ opt.name }}">{{ opt.name }}</option></sc-for></select>
+                  <sc-if value="{{ r.lowConfidence }}" hint-placeholder-val="{{ false }}">
+                    <p style="margin:4px 0 0;font-size:10.5px;color:var(--color-accent-700)">Low confidence — check this one</p>
+                  </sc-if>
+                </div>
+                <button type="button" class="btn btn-icon" aria-label="Remove row"><i class="lu" data-lucide="x" width="13" height="13" stroke-width="1.75"></i></button>
+              </div>
+            </sc-for>
+            </div>
+            <div style="display:flex;gap:10px;padding:16px 22px"><button type="button" class="btn btn-primary" onClick="{{ importConfirm }}">Import 4 transactions</button><button type="button" class="btn btn-ghost" onClick="{{ resetImport }}">Start over</button></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isImportError }}" hint-placeholder-val="{{ false }}">
+          <div class="card" style="align-items:center;text-align:center;padding:44px 20px">
+            <span style="width:44px;height:44px;border-radius:50%;border:1px solid var(--negative-ink);display:flex;align-items:center;justify-content:center;margin:0 auto 12px"><i class="lu" data-lucide="alert-triangle" width="19" height="19" stroke-width="1.5" color="var(--negative-ink)"></i></span>
+            <p style="margin:0 0 4px;font-size:14px;font-weight:600">Couldn't read that file</p>
+            <p style="margin:0 0 14px;font-size:12.5px;color:color-mix(in srgb, var(--color-text) 60%, transparent);max-width:340px;margin-inline:auto">Try a clearer PDF or export it as CSV instead.</p>
+            <button type="button" class="btn btn-secondary" onClick="{{ resetImport }}">Try another file</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- ============================= ERROR STATE (cross-cutting) ============================= -->
+  <section id="error-state" style="padding:20px 0 20px">
+    <div style="max-width:1000px;margin:0 auto;padding:0 40px 20px">
+      <h6 style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 6px">08 — Cross-cutting</h6>
+      <h2 style="font-family:var(--font-heading);font-weight:600;font-size:30px;margin:0">Error card <span style="font-size:15px;font-family:var(--font-body);font-weight:400;color:color-mix(in srgb, var(--color-text) 50%, transparent)">— database unreachable, any screen</span></h2>
+    </div>
+    <div style="max-width:640px;margin:0 auto">
+      <div class="card elev-md" style="align-items:center;text-align:center;padding:56px 32px">
+        <span style="width:52px;height:52px;border-radius:50%;border:1px solid var(--negative-ink);display:flex;align-items:center;justify-content:center;margin:0 auto 16px"><i class="lu" data-lucide="alert-triangle" width="22" height="22" stroke-width="1.5" color="var(--negative-ink)"></i></span>
+        <p style="margin:0 0 6px;font-family:var(--font-heading);font-weight:600;font-size:20px">Something went wrong</p>
+        <p style="margin:0 0 20px;font-size:13.5px;color:color-mix(in srgb, var(--color-text) 65%, transparent);max-width:360px;margin-inline:auto">We can't reach your data right now. This usually clears up in a minute — try again.</p>
+        <button type="button" class="btn btn-primary" onClick="{{ retryConnection }}" disabled="{{ errorRetrying }}">{{ retryLabel }}</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    transactions: null,
+    budgetRows: null,
+    goals: null,
+    recurringItems: null,
+    importRows: null,
+    toasts: [],
+    dialogTx: null,
+    form: { kind: 'expense', amount: '', category: 'Food & Drink', date: '11/09/2026', note: '' },
+    importState: 'idle',
+    errorRetrying: false,
+    showStyleSheet: false,
+    txVisibleCount: 9,
+  };
+
+  EXPENSE_CATEGORIES = ['Food & Drink', 'Transport', 'Shopping', 'Bills', 'Entertainment', 'Health', 'Other'];
+  INCOME_CATEGORIES = ['Salary', 'Bonus', 'Other Income'];
+  categoriesFor(kind) { return kind === 'income' ? this.INCOME_CATEGORIES : this.EXPENSE_CATEGORIES; }
+
+  componentDidMount() {
+    this._iconTimer = setInterval(() => {
+      if (window.lucide) { window.lucide.createIcons(); clearInterval(this._iconTimer); }
+    }, 100);
+    if (!this.state.transactions) this.setState({ transactions: this.seedTransactions() });
+    if (!this.state.budgetRows) this.setState({ budgetRows: this.seedBudgets() });
+    if (!this.state.goals) this.setState({ goals: this.seedGoals() });
+    if (!this.state.recurringItems) this.setState({ recurringItems: this.seedRecurring() });
+    if (!this.state.importRows) this.setState({ importRows: this.seedImportRows() });
+    this._keyHandler = (e) => { if (e.key === 'Escape' && this.state.dialogTx) this.closeEdit(); };
+    window.addEventListener('keydown', this._keyHandler);
+  }
+  componentDidUpdate() { if (window.lucide) window.lucide.createIcons(); }
+  componentWillUnmount() {
+    if (this._iconTimer) clearInterval(this._iconTimer);
+    if (this._keyHandler) window.removeEventListener('keydown', this._keyHandler);
+  }
+
+  seedBudgets() {
+    return [
+      { name: 'Food & Drink', spent: 2150000, limit: 2000000, draft: '2000000' },
+      { name: 'Transport', spent: 980000, limit: 1200000, draft: '1200000' },
+      { name: 'Shopping', spent: 1450000, limit: 0, draft: '' },
+      { name: 'Bills', spent: 1200000, limit: 1500000, draft: '1500000' },
+      { name: 'Entertainment', spent: 540000, limit: 700000, draft: '700000' },
+      { name: 'Other', spent: 330000, limit: 400000, draft: '400000' },
+      { name: 'Health', spent: 300000, limit: 600000, draft: '600000' },
+    ];
+  }
+  decorateBudget(r, i) {
+    const pct = r.limit > 0 ? (r.spent / r.limit) * 100 : null;
+    const barColor = pct === null ? '#7d7979' : pct >= 100 ? '#a83e2a' : pct >= 80 ? '#b68235' : '#0d7a56';
+    const statusLabel = pct === null ? 'No limit' : pct >= 100 ? 'Over' : pct >= 80 ? 'Near' : 'Under';
+    return {
+      ...r,
+      widthPct: pct === null ? 0 : Math.min(100, pct),
+      barColor, statusLabel,
+      spentLabel: r.limit > 0 ? `${this.fmt(r.spent)} / ${this.fmt(r.limit)}` : `${this.fmt(r.spent)} spent`,
+      onDraftChange: (e) => this.updateBudgetDraft(i, e.target.value),
+      onSave: () => this.commitBudgetLimit(i),
+    };
+  }
+  updateBudgetDraft(i, value) {
+    this.setState((s) => { const list = [...s.budgetRows]; list[i] = { ...list[i], draft: value }; return { budgetRows: list }; });
+  }
+  commitBudgetLimit(i) {
+    const amt = this.parseAmount(this.state.budgetRows[i].draft);
+    this.setState((s) => { const list = [...s.budgetRows]; list[i] = { ...list[i], limit: amt, draft: amt ? String(amt) : '' }; return { budgetRows: list }; });
+    this.addToast('success', `Limit updated for "${this.state.budgetRows[i].name}"`);
+  }
+
+  seedGoals() {
+    return [
+      { name: 'New phone', target: 12000000, saved: 7400000, draft: '' },
+      { name: 'Bali trip', target: 8500000, saved: 8500000, draft: '' },
+      { name: 'Emergency fund', target: 20000000, saved: 5000000, draft: '' },
+      { name: 'Laptop upgrade', target: 15000000, saved: 9750000, draft: '' },
+    ];
+  }
+  decorateGoal(g, i) {
+    const remaining = g.target - g.saved;
+    const done = remaining <= 0;
+    return {
+      ...g,
+      pct: Math.min(100, (g.saved / g.target) * 100),
+      savedFmt: this.fmt(g.saved), targetFmt: this.fmt(g.target),
+      color: done ? '#0d7a56' : '#b68235',
+      statusText: done ? 'Goal reached.' : `${this.fmt(remaining)} to go`,
+      notDone: !done,
+      onDraftChange: (e) => this.updateGoalDraft(i, e.target.value),
+      onAdd: () => this.addContribution(i),
+    };
+  }
+  updateGoalDraft(i, value) {
+    this.setState((s) => { const list = [...s.goals]; list[i] = { ...list[i], draft: value }; return { goals: list }; });
+  }
+  addContribution(i) {
+    const amt = this.parseAmount(this.state.goals[i].draft);
+    if (!amt) { this.addToast('destructive', 'Enter an amount first'); return; }
+    const name = this.state.goals[i].name;
+    this.setState((s) => {
+      const list = [...s.goals];
+      list[i] = { ...list[i], saved: Math.min(list[i].target, list[i].saved + amt), draft: '' };
+      return { goals: list };
+    });
+    this.addToast('success', `${this.fmt(amt)} added to "${name}"`);
+  }
+
+  seedRecurring() {
+    return [
+      { desc: 'Salary', kind: 'income', category: 'Salary', amount: 8500000, cadence: 'Monthly', next: '1 Oct 2026' },
+      { desc: 'Rent', kind: 'expense', category: 'Bills', amount: 3500000, cadence: 'Monthly', next: '5 Oct 2026' },
+      { desc: 'Netflix', kind: 'expense', category: 'Entertainment', amount: 54000, cadence: 'Monthly', next: '12 Oct 2026' },
+      { desc: 'Gym membership', kind: 'expense', category: 'Health', amount: 350000, cadence: 'Monthly', next: '20 Oct 2026' },
+    ];
+  }
+  decorateRecurring(r, i) {
+    return {
+      ...r,
+      amountFmt: (r.kind === 'income' ? '+' : '\u2212') + this.fmt(r.amount),
+      textColor: r.kind === 'income' ? '#0d7a56' : '#201f1d',
+      color: this.catColor(r.category, r.kind),
+      onStop: () => this.stopRecurring(i),
+    };
+  }
+  stopRecurring(i) {
+    const item = this.state.recurringItems[i];
+    this.setState((s) => ({ recurringItems: s.recurringItems.filter((_, idx) => idx !== i) }));
+    this.addToast('destructive', `Stopped "${item.desc}"`);
+  }
+
+  seedImportRows() {
+    return [
+      { date: '2 Sep 2026', desc: 'GOJEK *RIDE 8842', amount: 32000, kind: 'expense', category: 'Transport', confidence: 'high' },
+      { date: '3 Sep 2026', desc: 'PAYROLL DEPOSIT', amount: 8500000, kind: 'income', category: 'Salary', confidence: 'high' },
+      { date: '4 Sep 2026', desc: 'INDOMARET SBY', amount: 145000, kind: 'expense', category: 'Food & Drink', confidence: 'high' },
+      { date: '5 Sep 2026', desc: 'QRIS 88213-JKT', amount: 89000, kind: 'expense', category: 'Shopping', confidence: 'low' },
+    ];
+  }
+  decorateImportRow(r, i) {
+    return {
+      ...r,
+      amountFmt: (r.kind === 'income' ? '+' : '\u2212') + this.fmt(r.amount),
+      textColor: r.kind === 'income' ? '#0d7a56' : '#201f1d',
+      kindColor: r.kind === 'income' ? '#0d7a56' : '#2a78d6',
+      categoryOptions: this.categoriesFor(r.kind).map((name) => ({ name })),
+      onCategoryChange: (e) => this.updateImportCategory(i, e.target.value),
+      lowConfidence: r.confidence === 'low',
+    };
+  }
+  updateImportCategory(i, value) {
+    this.setState((s) => { const list = [...s.importRows]; list[i] = { ...list[i], category: value }; return { importRows: list }; });
+  }
+
+  fmt(n) { return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n)); }
+  parseAmount(s) { const d = String(s || '').replace(/[^\d]/g, ''); return d ? parseInt(d, 10) : 0; }
+  catColor(name, kind) {
+    const CAT_COLOR = {
+      'Food & Drink': '#a1584a', 'Shopping': '#8a7a3d', 'Bills': '#55716f',
+      'Transport': '#6b7a8f', 'Entertainment': '#6c5b7d', 'Other': '#7d7979', 'Health': '#96586a',
+    };
+    return kind === 'income' ? '#0d7a56' : (CAT_COLOR[name] || '#7d7979');
+  }
+
+  seedTransactions() {
+    return [
+      { date: '10 Sep 2026', desc: 'Salary', category: 'Salary', kind: 'income', amount: 8500000 },
+      { date: '9 Sep 2026', desc: 'Car down payment', category: 'Shopping', kind: 'expense', amount: 125000000 },
+      { date: '8 Sep 2026', desc: 'Rent', category: 'Bills', kind: 'expense', amount: 3500000 },
+      { date: '7 Sep 2026', desc: 'Freelance design work', category: 'Bonus', kind: 'income', amount: 2750000 },
+      { date: '6 Sep 2026', desc: 'Grocery run', category: 'Food & Drink', kind: 'expense', amount: 480000 },
+      { date: '5 Sep 2026', desc: 'Gojek rides', category: 'Transport', kind: 'expense', amount: 95000 },
+      { date: '4 Sep 2026', desc: 'Netflix', category: 'Entertainment', kind: 'expense', amount: 54000 },
+      { date: '3 Sep 2026', desc: 'Coffee with friends', category: 'Food & Drink', kind: 'expense', amount: 62000 },
+      { date: '1 Sep 2026', desc: 'Electricity bill', category: 'Bills', kind: 'expense', amount: 410000 },
+      { date: '29 Aug 2026', desc: 'Pharmacy', category: 'Health', kind: 'expense', amount: 128000 },
+      { date: '27 Aug 2026', desc: 'Spotify', category: 'Entertainment', kind: 'expense', amount: 54999 },
+      { date: '24 Aug 2026', desc: 'Freelance logo work', category: 'Bonus', kind: 'income', amount: 1200000 },
+      { date: '20 Aug 2026', desc: 'Grab to airport', category: 'Transport', kind: 'expense', amount: 145000 },
+      { date: '15 Aug 2026', desc: 'Weekend groceries', category: 'Food & Drink', kind: 'expense', amount: 310000 },
+      { date: '10 Aug 2026', desc: 'Salary', category: 'Salary', kind: 'income', amount: 8500000 },
+    ];
+  }
+  showMoreTx() { this.setState((s) => ({ txVisibleCount: s.txVisibleCount + 6 })); }
+
+  decorateTx(t, i) {
+    return {
+      ...t,
+      amountFmt: (t.kind === 'income' ? '+' : '\u2212') + this.fmt(t.amount),
+      textColor: t.kind === 'income' ? '#0d7a56' : '#201f1d',
+      color: this.catColor(t.category, t.kind),
+      onEdit: () => this.openEdit(i),
+      onDelete: () => this.deleteTx(i),
+    };
+  }
+
+  addToast(type, msg) {
+    const id = Date.now() + Math.random();
+    this.setState((s) => ({ toasts: [...s.toasts, { id, type, msg }] }));
+    setTimeout(() => this.setState((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 2800);
+  }
+
+  deleteTx(i) {
+    const tx = this.state.transactions[i];
+    this.setState((s) => ({ transactions: s.transactions.filter((_, idx) => idx !== i) }));
+    this.addToast('destructive', `Deleted "${tx.desc}"`);
+  }
+
+  openEdit(i) {
+    const tx = this.state.transactions[i];
+    this.setState({ dialogTx: { ...tx, index: i, amount: String(tx.amount) } });
+  }
+  closeEdit() { this.setState({ dialogTx: null }); }
+  updateDialogField(field, value) { this.setState((s) => ({ dialogTx: { ...s.dialogTx, [field]: value } })); }
+  saveEdit() {
+    const d = this.state.dialogTx;
+    this.setState((s) => {
+      const list = [...s.transactions];
+      list[d.index] = { ...list[d.index], desc: d.desc, category: d.category, date: d.date, amount: this.parseAmount(d.amount) };
+      return { transactions: list, dialogTx: null };
+    });
+    this.addToast('success', 'Transaction updated');
+  }
+
+  updateForm(field, value) { this.setState((s) => ({ form: { ...s.form, [field]: value } })); }
+  setFormKind(kind) { this.setState((s) => ({ form: { ...s.form, kind } })); }
+  setQuickAmount(amt) { this.setState((s) => ({ form: { ...s.form, amount: String(amt) } })); }
+  onAmountKeyDown(e) { if (e.key === 'Enter') { e.preventDefault(); this.addTransaction(); } }
+  addTransaction() {
+    const amt = this.parseAmount(this.state.form.amount);
+    if (!amt) { this.addToast('destructive', 'Enter an amount first'); return; }
+    const f = this.state.form;
+    const newTx = { date: 'Today', desc: f.note || f.category, category: f.category, kind: f.kind, amount: amt };
+    this.setState((s) => ({
+      transactions: [newTx, ...s.transactions],
+      form: { kind: f.kind, amount: '', category: f.category, date: f.date, note: '' },
+    }));
+    this.addToast('success', `Added ${this.fmt(amt)}`);
+    if (this._amountInputRef) this._amountInputRef.focus();
+  }
+
+  startImportDemo() { this.setState({ importState: 'extracting' }); setTimeout(() => this.setState({ importState: 'review' }), 1400); }
+  simulateImportError() { this.setState({ importState: 'error' }); }
+  resetImport() { this.setState({ importState: 'idle' }); }
+  importConfirm() { this.setState({ importState: 'idle' }); this.addToast('success', '4 transactions imported'); }
+
+  retryConnection() {
+    this.setState({ errorRetrying: true });
+    setTimeout(() => { this.setState({ errorRetrying: false }); this.addToast('success', 'Connection restored'); }, 1200);
+  }
+
+  renderVals() {
+    const fmt = (n) => this.fmt(n);
+    const catColor = (name, kind) => this.catColor(name, kind);
+
+    const neutralRamp = ['#f8f4f4','#eae7e7','#d7d3d3','#bab6b6','#9b9797','#7d7979','#605d5d','#444141','#2d2b2b']
+      .map((hex, i) => ({ hex, step: String((i + 1) * 100) }));
+    const accentRamp = ['#fff3e4','#ffe3bf','#facb8d','#e1ad66','#c28d41','#a06f24','#7d5411','#5a3b0a','#3a270d']
+      .map((hex, i) => ({ hex, step: String((i + 1) * 100) }));
+
+    const monthlyBars = [
+      { label: 'Apr', incomeH: 95, expenseH: 69 },
+      { label: 'May', incomeH: 95, expenseH: 80 },
+      { label: 'Jun', incomeH: 103, expenseH: 76 },
+      { label: 'Jul', incomeH: 95, expenseH: 102 },
+      { label: 'Aug', incomeH: 140, expenseH: 83 },
+      { label: 'Sep', incomeH: 95, expenseH: 78 },
+    ];
+
+    const categorySpend = [
+      { name: 'Food & Drink', amount: 2150000, pct: 100 },
+      { name: 'Shopping', amount: 1450000, pct: 67 },
+      { name: 'Bills', amount: 1200000, pct: 56 },
+      { name: 'Transport', amount: 980000, pct: 46 },
+      { name: 'Entertainment', amount: 540000, pct: 25 },
+      { name: 'Other', amount: 330000, pct: 15 },
+      { name: 'Health', amount: 300000, pct: 14 },
+    ].map((c, i) => ({ ...c, amountFmt: fmt(c.amount), color: catColor(c.name), rank: String(i + 1).padStart(2, '0') }));
+
+    const allTransactions = (this.state.transactions || this.seedTransactions()).map((t, i) => this.decorateTx(t, i));
+    const txVisibleCount = this.state.txVisibleCount;
+    const transactions = allTransactions.slice(0, txVisibleCount);
+    const txHasMore = txVisibleCount < allTransactions.length;
+    const txCountLabel = `showing ${transactions.length} of ${allTransactions.length}`;
+    const dialogTx = this.state.dialogTx;
+    const dialogOpen = !!dialogTx;
+    const form = this.state.form;
+    const formIsExpense = form.kind === 'expense';
+    const importState = this.state.importState;
+    const isIdle = importState === 'idle', isExtracting = importState === 'extracting', isReview = importState === 'review', isImportError = importState === 'error';
+    const errorRetrying = this.state.errorRetrying;
+    const toastColor = { success: '#0d7a56', destructive: '#a83e2a' };
+    const toasts = this.state.toasts.map((t) => ({ ...t, color: toastColor[t.type] || 'var(--color-accent)' }));
+
+    const budgetRows = (this.state.budgetRows || this.seedBudgets()).map((r, i) => this.decorateBudget(r, i));
+    const overBudgetCount = budgetRows.filter((r) => r.statusLabel === 'Over').length;
+    const overBudgetLabel = overBudgetCount > 0 ? `${overBudgetCount} categor${overBudgetCount === 1 ? 'y' : 'ies'} over budget` : 'All categories within budget';
+    const goals = (this.state.goals || this.seedGoals()).map((g, i) => this.decorateGoal(g, i));
+    const recurringItems = (this.state.recurringItems || this.seedRecurring()).map((r, i) => this.decorateRecurring(r, i));
+    const importRows = (this.state.importRows || this.seedImportRows()).map((r, i) => this.decorateImportRow(r, i));
+    const formCategoryOptions = this.categoriesFor(form.kind).map((name) => ({ name }));
+    const dialogCategoryOptions = dialogTx ? this.categoriesFor(dialogTx.kind).map((name) => ({ name })) : [];
+    const allCategoryOptions = [...this.EXPENSE_CATEGORIES, ...this.INCOME_CATEGORIES].map((name) => ({ name }));
+
+    return {
+      neutralRamp, accentRamp, monthlyBars, categorySpend, transactions, budgetRows, goals, recurringItems, importRows,
+      toasts, dialogTx, dialogOpen, form, formIsExpense, formCategoryOptions, dialogCategoryOptions, allCategoryOptions,
+      txHasMore, txCountLabel, showMoreTx: () => this.showMoreTx(),
+      overBudgetLabel,
+      showStyleSheet: this.state.showStyleSheet,
+      toggleStyleSheet: () => this.setState((s) => ({ showStyleSheet: !s.showStyleSheet })),
+      styleSheetToggleLabel: this.state.showStyleSheet ? 'Hide style sheet \u2191' : 'Show style sheet \u2193',
+      onAdd: () => this.addTransaction(),
+      quickAmounts: [15000, 50000, 100000, 250000].map((a) => ({ amount: a, label: this.fmt(a), onClick: () => this.setQuickAmount(a) })),
+      amountInputRef: (el) => { this._amountInputRef = el; },
+      onAmountKeyDown: (e) => this.onAmountKeyDown(e),
+      onAmountChange: (e) => this.updateForm('amount', e.target.value),
+      onNoteChange: (e) => this.updateForm('note', e.target.value),
+      onCategoryChange: (e) => this.updateForm('category', e.target.value),
+      onDateChange: (e) => this.updateForm('date', e.target.value),
+      setKindExpense: () => this.setFormKind('expense'),
+      setKindIncome: () => this.setFormKind('income'),
+      closeEdit: () => this.closeEdit(),
+      stopClickPropagation: (e) => e.stopPropagation(),
+      saveEdit: () => this.saveEdit(),
+      onDialogDescChange: (e) => this.updateDialogField('desc', e.target.value),
+      onDialogAmountChange: (e) => this.updateDialogField('amount', e.target.value),
+      onDialogCategoryChange: (e) => this.updateDialogField('category', e.target.value),
+      onDialogDateChange: (e) => this.updateDialogField('date', e.target.value),
+      isIdle, isExtracting, isReview, isImportError,
+      startImportDemo: () => this.startImportDemo(),
+      simulateImportError: () => this.simulateImportError(),
+      resetImport: () => this.resetImport(),
+      importConfirm: () => this.importConfirm(),
+      errorRetrying,
+      retryLabel: errorRetrying ? 'Retrying…' : 'Try again',
+      retryConnection: () => this.retryConnection(),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

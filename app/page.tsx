@@ -1,14 +1,5 @@
 import Link from "next/link";
-import {
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  BarChart3,
-  ChartColumnBig,
-  Sparkles,
-  Plus,
-  type LucideIcon,
-} from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { unwrap } from "@/lib/supabase/unwrap";
 import { ensureDefaultCategories } from "@/lib/categories";
@@ -16,70 +7,47 @@ import { materializeDueRecurring } from "@/lib/recurring";
 import { monthStart, nextMonthStart, monthLabel } from "@/lib/date";
 import { formatIDR } from "@/lib/format";
 import { CHART } from "@/lib/chart-colors";
-import { buttonVariants } from "@/components/ui/button";
-import { CategoryBarChart } from "@/components/charts/category-bar";
+import { categoryColor } from "@/lib/category-colors";
 import { MonthlyBarChart } from "@/components/charts/monthly-bars";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CategoryLedger } from "@/components/charts/category-ledger";
 
-function Tile({
+/**
+ * One column of the stat row. Bare figures separated by hairlines — no boxes,
+ * no icon chips: the numbers are the interface.
+ */
+function Stat({
   label,
   amount,
-  color,
   sign,
-  Icon,
-  delay = 0,
+  dot,
+  ink,
+  className = "",
 }: {
   label: string;
   amount: number;
-  color?: string;
-  sign?: string;
-  Icon: LucideIcon;
-  delay?: number;
+  sign: string;
+  dot: string;
+  ink: string;
+  className?: string;
 }) {
-  const tint = color ?? "var(--muted-foreground)";
   return (
-    <Card
-      className="relative overflow-hidden animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      {/* Accent rail keyed to the tile's meaning (income/expense/net). */}
-      <span
-        aria-hidden
-        className="absolute inset-y-0 left-0 w-1"
-        style={{ backgroundColor: tint }}
-      />
-      <CardContent className="flex items-center justify-between py-5 pl-5">
-        <div>
-          <p className="flex items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            <span
-              aria-hidden
-              className="size-2 rounded-full"
-              style={{ backgroundColor: tint }}
-            />
-            {label}
-          </p>
-          <p
-            className="mt-1.5 text-2xl font-semibold tabular-nums"
-            style={color ? { color } : undefined}
-          >
-            {sign}
-            {formatIDR(amount)}
-          </p>
-        </div>
+    <div className={className}>
+      <p className="flex items-center gap-[7px] text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
         <span
           aria-hidden
-          className="grid size-11 shrink-0 place-items-center rounded-full"
-          style={{ backgroundColor: `${color ?? "#64748b"}1a`, color: tint }}
-        >
-          <Icon className="size-5" />
-        </span>
-      </CardContent>
-    </Card>
+          className="size-[7px] rounded-full"
+          style={{ backgroundColor: dot }}
+        />
+        {label}
+      </p>
+      <p
+        className="mt-2 font-heading text-[34px] font-semibold leading-none tabular-nums"
+        style={{ color: ink }}
+      >
+        {sign}
+        {formatIDR(amount)}
+      </p>
+    </div>
   );
 }
 
@@ -106,7 +74,7 @@ export default async function Home() {
   const windowStart = `${buckets[0].key}-01`;
 
   const [categoriesRes, txnsRes] = await Promise.all([
-    supabase.from("categories").select("id, name"),
+    supabase.from("categories").select("id, name, kind"),
     supabase
       .from("transactions")
       .select("amount, kind, category_id, occurred_on")
@@ -116,7 +84,7 @@ export default async function Home() {
   const categories = unwrap(categoriesRes, "load categories");
   const txns = unwrap(txnsRes, "load transactions");
 
-  const catName = new Map(categories.map((c) => [c.id, c.name]));
+  const catById = new Map(categories.map((c) => [c.id, c]));
   const bucketByKey = new Map(buckets.map((b) => [b.key, b]));
 
   let monthIncome = 0;
@@ -146,97 +114,102 @@ export default async function Home() {
 
   const net = monthIncome - monthExpense;
   const categoryData = [...catSpend.entries()]
-    .map(([id, amount]) => ({ name: catName.get(id) ?? "Uncategorized", amount }))
+    .map(([id, amount]) => {
+      const c = catById.get(id);
+      return {
+        name: c?.name ?? "Uncategorized",
+        amount,
+        color: categoryColor(c),
+      };
+    })
     .sort((a, b) => b.amount - a.amount);
 
   const hasAny = txns.length > 0;
 
+  if (!hasAny) {
+    return (
+      <div className="flex flex-col items-center gap-4 px-6 py-20 text-center">
+        <span
+          aria-hidden
+          className="flex size-[52px] items-center justify-center rounded-full border"
+          style={{ borderColor: CHART.accent }}
+        >
+          <BookOpen
+            className="size-[22px]"
+            strokeWidth={1.5}
+            style={{ color: CHART.accentInk }}
+          />
+        </span>
+        <p className="max-w-[320px] text-sm text-muted-foreground">
+          No transactions yet. Add a few to open this month&apos;s ledger.
+        </p>
+        <Link
+          href="/transactions"
+          className="rounded border px-4 py-2 font-heading text-sm font-semibold transition-colors"
+          style={{ borderColor: CHART.accent, color: CHART.accent }}
+        >
+          Add your first transaction
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-6">
-      <div>
-        <h1 className="text-xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">{monthLabel(now)}</p>
+    <div>
+      {/* The month is the headline; "Dashboard" is only a kicker above it. */}
+      <p className="kicker-muted mb-1">Dashboard</p>
+      <h1 className="mb-8 font-heading text-[38px] font-semibold">
+        {monthLabel(now)}
+      </h1>
+
+      <div className="mb-8 grid grid-cols-1 sm:grid-cols-3">
+        <Stat
+          label="Income"
+          amount={monthIncome}
+          sign="+"
+          dot={CHART.income}
+          ink={CHART.incomeInk}
+          className="pb-3 sm:pb-0 sm:pr-8"
+        />
+        <Stat
+          label="Expenses"
+          amount={monthExpense}
+          sign="−"
+          dot={CHART.expense}
+          ink={CHART.expenseInk}
+          className="border-t border-divider py-3 sm:border-t-0 sm:border-l sm:px-8 sm:py-0"
+        />
+        {/* Net gets a direction cue of its own — teal up, brick down — kept
+            distinct from the income/expense pair so it never reads as a third
+            category of money. */}
+        <Stat
+          label="Net"
+          amount={Math.abs(net)}
+          sign={net >= 0 ? "+" : "−"}
+          dot={net >= 0 ? CHART.incomeInk : CHART.negative}
+          ink={net >= 0 ? CHART.incomeInk : CHART.negative}
+          className="border-t border-divider pt-3 sm:border-t-0 sm:border-l sm:pl-8 sm:pt-0"
+        />
       </div>
 
-      {!hasAny ? (
-        <Card className="animate-in fade-in zoom-in-95 duration-500">
-          <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
-            <span className="grid size-14 place-items-center rounded-full bg-accent text-primary">
-              <Sparkles className="size-7" />
-            </span>
-            <p className="max-w-xs text-sm text-muted-foreground">
-              No transactions yet. Add a few to watch your dashboard come to
-              life.
-            </p>
-            <Link
-              href="/transactions"
-              className={`${buttonVariants()} gap-1.5`}
-            >
-              <Plus className="size-4" />
-              Add your first transaction
-            </Link>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Tile
-              label="Income"
-              amount={monthIncome}
-              color={CHART.income}
-              sign="+"
-              Icon={TrendingUp}
-              delay={0}
-            />
-            <Tile
-              label="Expenses"
-              amount={monthExpense}
-              color={CHART.expense}
-              sign="−"
-              Icon={TrendingDown}
-              delay={80}
-            />
-            <Tile
-              label="Net"
-              amount={Math.abs(net)}
-              color={net >= 0 ? CHART.positive : CHART.negative}
-              sign={net >= 0 ? "+" : "−"}
-              Icon={Wallet}
-              delay={160}
-            />
-          </div>
+      <hr className="mb-8 border-t border-divider" />
 
-          <Card
-            className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500"
-            style={{ animationDelay: "240ms" }}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="size-4 text-primary" />
-                Income vs expense
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MonthlyBarChart data={buckets} />
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1.1fr_1fr]">
+        <section>
+          <h2 className="mb-5 font-heading text-[19px] font-semibold">
+            Income vs expense — six months
+          </h2>
+          <MonthlyBarChart data={buckets} />
+        </section>
 
-          <Card
-            className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both duration-500"
-            style={{ animationDelay: "320ms" }}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ChartColumnBig className="size-4 text-primary" />
-                Spending by category · {monthLabel(now)}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CategoryBarChart data={categoryData} />
-            </CardContent>
-          </Card>
-        </>
-      )}
+        <section>
+          <h2 className="mb-5 font-heading text-[19px] font-semibold">
+            Spending by category ·{" "}
+            {now.toLocaleDateString("id-ID", { month: "long" })}
+          </h2>
+          <CategoryLedger data={categoryData} />
+        </section>
+      </div>
     </div>
   );
 }

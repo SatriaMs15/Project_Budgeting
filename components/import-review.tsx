@@ -2,20 +2,21 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  importTransactions,
-  type ImportState,
-} from "@/app/actions/import";
+import { X } from "lucide-react";
+import { importTransactions, type ImportState } from "@/app/actions/import";
 import { MoneyInput } from "@/components/money-input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { moneyInk } from "@/lib/chart-colors";
 import type { Category, Kind } from "@/lib/supabase/types";
 import type { ProposedRow } from "@/lib/csv";
 
 const initialState: ImportState = { ts: 0 };
 
-const selectClass =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
+/** Shared column track for the review table's header and rows. */
+const COLS =
+  "grid grid-cols-[100px_1fr_130px_110px_160px_70px] gap-3 min-w-[660px]";
 
 type RowState = ProposedRow & { key: number };
 
@@ -37,6 +38,10 @@ function ReviewRow({
     options.find((c) => c.name === row.suggested_category)?.id ?? "";
   const [categoryId, setCategoryId] = useState(initialCategory);
 
+  // The extractor returns "" when it couldn't match a known category — that's
+  // the honest signal for "check this one" rather than a fabricated score.
+  const lowConfidence = !row.suggested_category;
+
   // Switching kind changes the available categories — drop a now-invalid pick.
   function switchKind(next: Kind) {
     setKind(next);
@@ -47,66 +52,64 @@ function ReviewRow({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 rounded-md border p-3 md:grid-cols-[130px_1fr_150px_140px_150px_auto] md:items-center md:border-0 md:border-b md:p-2">
+    <div className={`${COLS} items-center border-b border-divider px-5 py-3`}>
       <input type="hidden" name="kind" value={kind} />
 
-      <Input type="date" name="occurred_on" defaultValue={row.occurred_on} />
+      <Input
+        type="date"
+        name="occurred_on"
+        defaultValue={row.occurred_on}
+        className="h-[30px] px-1.5 text-[12.5px]"
+      />
 
       <Input
         name="note"
         defaultValue={row.note}
         placeholder="Description"
-        className="col-span-2 md:col-span-1"
+        className="h-[30px] text-[13px]"
       />
 
-      <MoneyInput name="amount" defaultValue={row.amount} />
+      <MoneyInput name="amount" defaultValue={row.amount} className="h-[30px]" />
 
-      <div className="grid grid-cols-2 gap-1">
-        <button
-          type="button"
-          onClick={() => switchKind("expense")}
-          className={`rounded-md border px-2 py-1 text-xs font-medium transition ${
-            kind === "expense"
-              ? "border-red-500 bg-red-50 text-red-700"
-              : "text-muted-foreground"
-          }`}
-        >
-          Expense
-        </button>
-        <button
-          type="button"
-          onClick={() => switchKind("income")}
-          className={`rounded-md border px-2 py-1 text-xs font-medium transition ${
-            kind === "income"
-              ? "border-green-500 bg-green-50 text-green-700"
-              : "text-muted-foreground"
-          }`}
-        >
-          Income
-        </button>
-      </div>
-
-      <select
-        name="category_id"
-        value={categoryId}
-        onChange={(e) => setCategoryId(e.target.value)}
-        className={selectClass}
+      {/* Kind reads as an outlined tag and toggles in place. */}
+      <button
+        type="button"
+        onClick={() => switchKind(kind === "expense" ? "income" : "expense")}
+        className="tag-outline"
+        style={{ color: moneyInk(kind) }}
+        aria-label={`Kind: ${kind}. Click to switch.`}
       >
-        <option value="">Uncategorized</option>
-        {options.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+        {kind === "income" ? "Income" : "Expense"}
+      </button>
+
+      <div>
+        <NativeSelect
+          name="category_id"
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          className="h-[30px]"
+        >
+          <option value="">Uncategorized</option>
+          {options.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </NativeSelect>
+        {lowConfidence && (
+          <p className="mt-1 text-[10.5px] text-[color:var(--accent-700)]">
+            Low confidence — check this one
+          </p>
+        )}
+      </div>
 
       <button
         type="button"
         onClick={onRemove}
-        className="justify-self-end text-sm text-muted-foreground hover:text-red-600"
+        className="flex size-7 items-center justify-self-end rounded text-muted-foreground transition-colors hover:bg-[color-mix(in_srgb,var(--ink)_7%,transparent)] hover:text-foreground"
         aria-label="Remove row"
       >
-        Remove
+        <X className="m-auto size-[13px]" strokeWidth={1.75} />
       </button>
     </div>
   );
@@ -138,43 +141,54 @@ export function ImportReview({
 
   if (imported) {
     return (
-      <p className="text-sm text-muted-foreground">Imported — taking you to Transactions…</p>
+      <p className="text-sm text-muted-foreground">
+        Imported — taking you to the register…
+      </p>
     );
   }
 
   return (
-    <form action={formAction} className="grid gap-3">
-      <p className="text-sm text-muted-foreground">
+    <form action={formAction} className="rounded border border-divider">
+      <p className="border-b border-divider px-5 py-4 text-[13px] text-muted-foreground">
         {rows.length} transaction{rows.length === 1 ? "" : "s"} found. Edit
-        anything that looks off, set categories, then import.
+        anything that looks off, then import.
       </p>
 
-      <div className="grid gap-2">
+      <div className="overflow-x-auto">
+        <div className={`${COLS} col-head border-b border-divider px-5 py-3`}>
+          <span>Date</span>
+          <span>Description</span>
+          <span className="text-right">Amount</span>
+          <span>Kind</span>
+          <span>Category</span>
+          <span />
+        </div>
+
         {rows.map((row) => (
           <ReviewRow
             key={row.key}
             row={row}
             categories={categories}
-            onRemove={() =>
-              setRows((rs) => rs.filter((r) => r.key !== row.key))
-            }
+            onRemove={() => setRows((rs) => rs.filter((r) => r.key !== row.key))}
           />
         ))}
       </div>
 
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state.error && (
+        <p className="px-5 pt-3 text-sm text-[color:var(--negative-ink)]">
+          {state.error}
+        </p>
+      )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap gap-2.5 px-5 py-4">
         <Button type="submit" disabled={pending || rows.length === 0}>
-          {pending ? "Importing…" : `Import ${rows.length} transaction${rows.length === 1 ? "" : "s"}`}
+          {pending
+            ? "Importing…"
+            : `Import ${rows.length} transaction${rows.length === 1 ? "" : "s"}`}
         </Button>
-        <button
-          type="button"
-          onClick={onReset}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
+        <Button type="button" variant="ghost" onClick={onReset}>
           Start over
-        </button>
+        </Button>
       </div>
     </form>
   );

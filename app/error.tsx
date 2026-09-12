@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { AlertTriangle, RotateCw } from "lucide-react";
+import { useEffect, useTransition } from "react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { CHART } from "@/lib/chart-colors";
 
 /**
  * Route-level error boundary. Covers every page under app/, so a failed query
@@ -20,44 +20,58 @@ export default function Error({
   error: Error & { digest?: string };
   unstable_retry: () => void;
 }) {
+  // useTransition already reports whether the retry is in flight, and it
+  // clears itself when the attempt settles — so a failed retry re-enables the
+  // button without any state of our own to reset.
+  const [pending, startTransition] = useTransition();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
 
   return (
-    <Card className="animate-in fade-in zoom-in-95 duration-500">
-      <CardContent className="flex flex-col items-center gap-4 py-16 text-center">
-        <span className="grid size-14 place-items-center rounded-full bg-destructive/10 text-destructive">
-          <AlertTriangle className="size-7" />
+    <div className="mx-auto max-w-[640px] px-4 py-10">
+      <div className="elev-md rounded border border-divider bg-card px-8 py-14 text-center">
+        <span
+          aria-hidden
+          className="mx-auto mb-4 flex size-[52px] items-center justify-center rounded-full border"
+          style={{ borderColor: CHART.negative }}
+        >
+          <AlertTriangle
+            className="size-[22px]"
+            strokeWidth={1.5}
+            style={{ color: CHART.negative }}
+          />
         </span>
 
-        <div className="grid gap-1.5">
-          <p className="font-medium">Couldn&apos;t load your data</p>
-          <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-            This is a connection or database problem, not an empty account —
-            your transactions are safe. A paused Supabase project is the usual
-            cause; free projects sleep after about a week of inactivity.
-          </p>
-        </div>
+        <p className="mb-1.5 font-heading text-[20px] font-semibold">
+          Something went wrong
+        </p>
+        <p className="mx-auto mb-5 max-w-[360px] text-[13.5px] text-muted-foreground">
+          We can&apos;t reach your data right now. This usually clears up in a
+          minute — try again.
+        </p>
 
         {/* Dev-only detail. In production this message is a generic placeholder. */}
         {process.env.NODE_ENV === "development" && (
-          <pre className="max-w-full overflow-x-auto rounded-md bg-muted px-3 py-2 text-left text-xs text-muted-foreground">
+          <pre className="mb-5 max-w-full overflow-x-auto rounded border border-divider px-3 py-2 text-left text-xs text-muted-foreground">
             {error.message}
           </pre>
         )}
 
-        <Button onClick={() => unstable_retry()} className="gap-1.5">
-          <RotateCw className="size-4" />
-          Try again
+        <Button
+          disabled={pending}
+          onClick={() => startTransition(() => unstable_retry())}
+        >
+          {pending ? "Retrying…" : "Try again"}
         </Button>
 
         {error.digest && (
-          <p className="text-xs text-muted-foreground">
+          <p className="mt-5 text-[11px] text-muted-foreground">
             Reference: <code>{error.digest}</code>
           </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -2,12 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { unwrap } from "@/lib/supabase/unwrap";
 import { ensureDefaultCategories } from "@/lib/categories";
 import { ImportForm } from "@/components/import-form";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 export default async function ImportPage() {
   await ensureDefaultCategories();
@@ -19,13 +13,12 @@ export default async function ImportPage() {
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Import transactions</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ImportForm categories={categories} />
-      </CardContent>
-    </Card>
+    <div>
+      <h1 className="mb-1 font-heading text-[32px] font-semibold">Import</h1>
+      <p className="mb-7 text-sm text-muted-foreground">
+        Upload a statement and we&apos;ll read the transactions out of it.
+      </p>
+      <ImportForm categories={categories} />
+    </div>
   );
 }

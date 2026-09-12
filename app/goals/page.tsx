@@ -2,12 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { unwrap } from "@/lib/supabase/unwrap";
 import { AddGoalForm } from "@/components/add-goal-form";
 import { GoalCard } from "@/components/goal-card";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default async function GoalsPage() {
   const supabase = await createClient();
@@ -20,24 +15,24 @@ export default async function GoalsPage() {
   );
 
   return (
-    <div className="grid gap-6 md:grid-cols-[minmax(0,320px)_1fr]">
-      <Card className="h-fit">
-        <CardHeader>
-          <CardTitle>New savings goal</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AddGoalForm />
-        </CardContent>
-      </Card>
+    <div>
+      <h1 className="mb-7 font-heading text-[32px] font-semibold">Goals</h1>
 
-      <div className="grid gap-4">
+      <div className="grid items-start gap-7 lg:grid-cols-[320px_1fr]">
+        <Card className="elev-sm">
+          <CardContent>
+            <p className="kicker mb-2.5">New savings goal</p>
+            <AddGoalForm />
+          </CardContent>
+        </Card>
+
         {goals.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            No goals yet. Set a target on the left — like saving for a phone or a
-            trip.
+          <p className="py-10 text-sm text-muted-foreground">
+            No goals yet. Set a target on the left — a phone, a trip, a rainy
+            day.
           </p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2">
             {goals.map((g) => (
               <GoalCard key={g.id} goal={g} />
             ))}
