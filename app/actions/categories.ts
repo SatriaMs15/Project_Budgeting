@@ -27,15 +27,23 @@ function fail(error: string): CategoryFormState {
   return { error, ts: Date.now() };
 }
 
-/** Names collide when they differ only by case or surrounding space. */
+/**
+ * Names collide when they differ only by case or surrounding space.
+ *
+ * Kept deliberately identical to the index expression in migration 0003
+ * (`lower(btrim(name))`), so the message the user reads and the rule the
+ * database enforces never disagree about what "the same name" means.
+ */
 function sameName(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
 /**
- * Postgres only reports 23505 if a unique index exists; this schema has none on
- * `categories`, so the check above is the real guard and this is the backstop
- * for a constraint added later (or for two submits racing each other).
+ * Postgres reports 23505 once `categories_user_kind_name_uniq` (migration 0003)
+ * is applied. The check above still runs first, because it can name the
+ * offending category and keep the user's typing; this catches what it cannot —
+ * two submits racing, where both read before either writes. It also means the
+ * action behaves correctly whether or not 0003 has been applied yet.
  */
 function isDuplicateError(error: { code?: string | null }): boolean {
   return error.code === "23505";

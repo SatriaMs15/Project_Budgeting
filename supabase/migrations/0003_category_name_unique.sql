@@ -1,0 +1,40 @@
+-- One category name per kind, per user.
+--
+-- `categories` has never had a uniqueness rule. It did not matter while the
+-- only write was the one-time seed in lib/categories.ts, but categories can now
+-- be added and renamed from /categories, so two rows can end up with the same
+-- name. app/actions/categories.ts rejects that before writing; this is the rule
+-- underneath it, which also covers the case the application check cannot: two
+-- submits racing each other, where both read before either writes.
+--
+-- Shape notes:
+--   - An expression index, not a UNIQUE table constraint: constraints cannot
+--     contain expressions, and the comparison has to be case-insensitive.
+--   - lower(btrim(name)) matches the application's comparison
+--     (`a.trim().toLowerCase() === b.trim().toLowerCase()`) for every name the
+--     app can actually store. Not quite exactly: btrim() strips spaces, while
+--     JS trim() strips all whitespace, so a tab-padded name would differ. The
+--     action trims before inserting, so stored names carry no edge whitespace
+--     at all and the difference is unreachable from the UI — btrim is here for
+--     rows written by other means (the SQL editor, a future importer).
+--   - kind is part of the key on purpose. Every category picker in the app
+--     filters by kind, so an income "Travel" and an expense "Travel" never
+--     appear in the same list and are genuinely different headings.
+--   - user_id is part of the key so one person's names never constrain
+--     another's. RLS hides other users' rows but does NOT scope a unique index.
+--
+-- Re-runnable, like 0002.
+--
+-- BEFORE RUNNING, check there is nothing to clean up. This should return zero
+-- rows; duplicates were not reachable before category management existed:
+--
+--   select user_id, kind, lower(btrim(name)) as name_key, count(*)
+--   from public.categories
+--   group by 1, 2, 3
+--   having count(*) > 1;
+--
+-- If it does return rows, rename or delete the extras first — creating the
+-- index while duplicates exist fails, and the failure is the safe outcome.
+
+create unique index if not exists categories_user_kind_name_uniq
+  on public.categories (user_id, kind, lower(btrim(name)));

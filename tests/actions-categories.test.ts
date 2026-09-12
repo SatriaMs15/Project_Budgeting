@@ -271,3 +271,63 @@ describe("deleteCategory", () => {
     );
   });
 });
+
+describe("addCategory — agreement with the database's unique index", () => {
+  // Migration 0003 indexes (user_id, kind, lower(btrim(name))). If the action's
+  // idea of "the same name" ever drifts from that expression, the UI and the
+  // database disagree: either a duplicate slips past the check and the insert
+  // dies with a raw 23505, or the action refuses a name Postgres would accept.
+  // These lock the two together for every name the action can actually store.
+  const key = (s: string) => s.trim().toLowerCase();
+
+  it.each([
+    ["exact", "Fuel", "Fuel"],
+    ["upper vs lower", "FUEL", "fuel"],
+    ["mixed case", "FuEl", "fUeL"],
+    ["leading spaces", "  Fuel", "Fuel"],
+    ["trailing spaces", "Fuel  ", "Fuel"],
+    ["both sides", "  Fuel  ", "Fuel"],
+  ])("treats %s as the same name", async (_label, typed, stored) => {
+    h.state.data["categories"] = [
+      { id: "c-x", name: stored, kind: "expense", color: "#a1584a" },
+    ];
+    const r = await addCategory(prev, form({ name: typed, kind: "expense" }));
+    expect(r.error).toMatch(/already have an expense category/);
+    expect(key(typed)).toBe(key(stored));
+  });
+
+  it.each([
+    ["internal spacing", "Food  Drink", "Food Drink"],
+    ["an accent", "Café", "Cafe"],
+    ["a trailing word", "Fuel Extra", "Fuel"],
+  ])("treats %s as a different name", async (_label, typed, stored) => {
+    h.state.data["categories"] = [
+      { id: "c-x", name: stored, kind: "expense", color: "#a1584a" },
+    ];
+    const r = await addCategory(prev, form({ name: typed, kind: "expense" }));
+    expect(r.error).toBeUndefined();
+    expect(key(typed)).not.toBe(key(stored));
+  });
+
+  it("never stores edge whitespace, which is what keeps btrim() and trim() equivalent", async () => {
+    // The one place the two expressions could diverge is a tab- or
+    // newline-padded name; the action trims before inserting, so no such row
+    // can reach the index through the UI.
+    for (const typed of ["  Fuel  ", "\tFuel\t", "\nFuel\n", " \t Fuel \n "]) {
+      h.state = createHarness();
+      h.state.data["categories"] = [];
+      await addCategory(prev, form({ name: typed, kind: "expense" }));
+      const stored = (inserted() as { name: string }).name;
+      expect(stored).toBe("Fuel");
+      expect(stored).toBe(stored.trim());
+    }
+  });
+
+  it("scopes collisions by kind, exactly as the index does", async () => {
+    h.state.data["categories"] = [
+      { id: "c-x", name: "Travel", kind: "income", color: "#0d7a56" },
+    ];
+    const r = await addCategory(prev, form({ name: "travel", kind: "expense" }));
+    expect(r.error).toBeUndefined();
+  });
+});
