@@ -16,12 +16,22 @@ describe("NavLinks", () => {
       "Dashboard",
       "Transactions",
       "Budgets",
+      "Categories",
       "Goals",
       "Recurring",
       "Import",
     ]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
+  });
+
+  it("marks Categories current on its own screen", () => {
+    mockPathname.current = "/categories";
+    render(<NavLinks />);
+    expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("marks the current page for assistive tech", () => {

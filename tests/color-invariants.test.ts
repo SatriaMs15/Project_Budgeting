@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CHART, moneyInk } from "@/lib/chart-colors";
-import { categoryColor } from "@/lib/category-colors";
+import { ASSIGNABLE_EXPENSE_MARKS, categoryColor } from "@/lib/category-colors";
 
 /* ── colour maths ──────────────────────────────────────────────────────── */
 
@@ -231,5 +231,96 @@ describe("categoryColor", () => {
       const c = categoryColor({ name, kind: "expense" });
       expect(contrast(c, CARD)).toBeGreaterThanOrEqual(4.5);
     }
+  });
+});
+
+/** The six category hues that came from the design handoff. */
+const DESIGN_ORIGINALS = [
+  "#a1584a",
+  "#82733a",
+  "#55716f",
+  "#667488",
+  "#6c5b7d",
+  "#96586a",
+];
+
+/** Smallest linear-RGB distance between any two colours in the set. */
+function tightestPair(colors: string[]): number {
+  let min = Infinity;
+  for (let i = 0; i < colors.length; i++) {
+    for (let j = i + 1; j < colors.length; j++) {
+      const x = rgb(colors[i]).map(lin);
+      const y = rgb(colors[j]).map(lin);
+      min = Math.min(min, Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]));
+    }
+  }
+  return min;
+}
+
+describe("auto-assigned category marks", () => {
+  it("are all readable as tag text on a card", () => {
+    // These are handed out without the user ever seeing a picker, so a mark
+    // that fails contrast would ship silently on a category they just created.
+    // CARD is the surface asserted because every category tag renders inside a
+    // Card; see the paper-ground test below for what the page ground allows.
+    for (const mark of ASSIGNABLE_EXPENSE_MARKS) {
+      expect(contrast(mark, CARD)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("clear the paper ground too, for every mark added beyond the design's six", () => {
+    // Three of the design's original hues (#82733a, #667488, #767272) measure
+    // ~4.2 on the paper and are grandfathered in. Anything added since has to
+    // clear AA on both surfaces, so a tag could be moved onto the page ground
+    // without re-auditing the newer half of the palette.
+    const added = ASSIGNABLE_EXPENSE_MARKS.filter(
+      (m) => !DESIGN_ORIGINALS.includes(m),
+    );
+    expect(added.length).toBeGreaterThan(0);
+    for (const mark of added) {
+      expect(contrast(mark, PAPER)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("are distinct from one another", () => {
+    expect(new Set(ASSIGNABLE_EXPENSE_MARKS).size).toBe(
+      ASSIGNABLE_EXPENSE_MARKS.length,
+    );
+  });
+
+  it("stay as far apart as the design's own hues already do", () => {
+    // The bar is the design palette's own tightest pair, computed rather than
+    // hard-coded: a mark added later may not crowd the set any further than the
+    // design already does.
+    const floor = tightestPair(DESIGN_ORIGINALS);
+    expect(tightestPair([...ASSIGNABLE_EXPENSE_MARKS])).toBeGreaterThanOrEqual(
+      floor,
+    );
+  });
+
+  it("stay apart from the income ink, so a new expense never reads as income", () => {
+    // Same idea: the design's own terracotta already sits 0.04 from the income
+    // ink under protanopia, so that distance is the floor a new mark must meet
+    // — not a stricter number invented here.
+    const floor = Math.min(
+      ...DESIGN_ORIGINALS.flatMap((m) =>
+        (["protanopia", "deuteranopia"] as const).map((k) =>
+          cvdDistance(m, CHART.incomeInk, k),
+        ),
+      ),
+    );
+    for (const mark of ASSIGNABLE_EXPENSE_MARKS) {
+      expect(mark).not.toBe(CHART.incomeInk);
+      for (const kind of ["protanopia", "deuteranopia"] as const) {
+        expect(
+          cvdDistance(mark, CHART.incomeInk, kind),
+        ).toBeGreaterThanOrEqual(floor);
+      }
+    }
+  });
+
+  it("leave the neutral fallback out, so a real category never looks unrecognised", () => {
+    const fallback = categoryColor({ name: "Nothing the design named", kind: "expense" });
+    expect(ASSIGNABLE_EXPENSE_MARKS).not.toContain(fallback);
   });
 });
