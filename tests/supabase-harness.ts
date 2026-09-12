@@ -22,11 +22,22 @@ export type HarnessState = {
   data: Record<string, unknown>;
   /** Force an error for a given "table.op", e.g. "transactions.insert". */
   errors: Record<string, { message: string; code?: string }>;
-  user: { id: string } | null;
+  user: { id: string; user_metadata?: Record<string, unknown> } | null;
+  /** Payloads passed to auth.updateUser, so a test can assert what was stored. */
+  authUpdates: { data?: Record<string, unknown> }[];
+  /** How many times auth.getUser was called — lets a test pin the query cost. */
+  authReads: number;
 };
 
 export function createHarness(): HarnessState {
-  return { calls: [], data: {}, errors: {}, user: { id: "user-1" } };
+  return {
+    calls: [],
+    data: {},
+    errors: {},
+    user: { id: "user-1", user_metadata: {} },
+    authUpdates: [],
+    authReads: 0,
+  };
 }
 
 class Query {
@@ -108,7 +119,22 @@ export function makeClient(state: HarnessState) {
   return {
     from: (table: string) => new Query(state, table),
     auth: {
-      getUser: async () => ({ data: { user: state.user }, error: null }),
+      getUser: async () => {
+        state.authReads += 1;
+        return { data: { user: state.user }, error: null };
+      },
+      updateUser: async (attrs: { data?: Record<string, unknown> }) => {
+        state.authUpdates.push(attrs);
+        const error = state.errors["auth.updateUser"];
+        if (error) return { data: { user: null }, error };
+        if (state.user) {
+          state.user.user_metadata = {
+            ...(state.user.user_metadata ?? {}),
+            ...(attrs.data ?? {}),
+          };
+        }
+        return { data: { user: state.user }, error: null };
+      },
     },
   };
 }

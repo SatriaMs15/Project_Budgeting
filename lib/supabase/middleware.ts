@@ -36,7 +36,23 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    await supabase.auth.signInAnonymously();
+    const { error } = await supabase.auth.signInAnonymously();
+    if (error) {
+      // Swallowing this was expensive. With no session, every RLS-protected
+      // write fails, and the visible symptom is "new row violates row-level
+      // security policy" on whatever table the page touched first — which reads
+      // like a schema or permissions bug rather than a sign-in that never
+      // happened. Log the real cause; lib/categories.ts turns the downstream
+      // failure into a message that points back here.
+      const status = error.status ?? "no status";
+      const rateLimited = error.status === 429;
+      console.error(
+        `[auth] anonymous sign-in failed (${status}): ${error.message}` +
+          (rateLimited
+            ? " — Supabase rate-limits anonymous sign-ins (roughly 30/hour per IP on the free tier). It clears on its own; requests until then have no user attached."
+            : ""),
+      );
+    }
   }
 
   return supabaseResponse;
