@@ -8,6 +8,19 @@ import { Button } from "@/components/ui/button";
 import { CHART } from "@/lib/chart-colors";
 import type { Category } from "@/lib/supabase/types";
 
+/**
+ * Extensions are listed alongside MIME types because browsers are unreliable
+ * about the Office ones — a .xlsx commonly arrives as application/octet-stream,
+ * and the picker would grey it out on the MIME type alone.
+ */
+const ACCEPTED_FILES = [
+  ".csv,text/csv",
+  ".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/pdf",
+  "image/png,image/jpeg,image/webp",
+].join(",");
+
 const initialState: ExtractState = { ts: 0 };
 
 /** Outlined status medallion — the shared shape for idle/error states. */
@@ -99,7 +112,7 @@ export function ImportForm({ categories }: { categories: Category[] }) {
             name="file"
             required
             className="hidden"
-            accept=".csv,text/csv,application/pdf,image/png,image/jpeg,image/webp"
+            accept={ACCEPTED_FILES}
             onChange={() => formRef.current?.requestSubmit()}
           />
           <Button
@@ -131,8 +144,8 @@ export function ImportForm({ categories }: { categories: Category[] }) {
       </Medallion>
       <p className="mb-1 text-sm font-semibold">Drop a bank statement here</p>
       <p className="mb-3.5 text-[12.5px] text-muted-foreground">
-        CSV, PDF, or a photo of a receipt — up to 10MB. Nothing is saved until
-        you review it.
+        CSV, Excel, Word, PDF, or a photo of a receipt — up to 10MB. Nothing is
+        saved until you review it.
       </p>
       <input
         ref={fileRef}
@@ -140,7 +153,7 @@ export function ImportForm({ categories }: { categories: Category[] }) {
         name="file"
         required
         className="hidden"
-        accept=".csv,text/csv,application/pdf,image/png,image/jpeg,image/webp"
+        accept={ACCEPTED_FILES}
         onChange={() => formRef.current?.requestSubmit()}
       />
       <Button

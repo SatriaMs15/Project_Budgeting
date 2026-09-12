@@ -11,6 +11,13 @@ import { createClient } from "@/lib/supabase/server";
 import { unwrap } from "@/lib/supabase/unwrap";
 import type { Kind } from "@/lib/supabase/types";
 import { parseCsvTransactions, type ProposedRow } from "@/lib/csv";
+import {
+  classifyUpload,
+  docxToCsvTables,
+  docxToText,
+  xlsxToCsvSheets,
+  type UploadKind,
+} from "@/lib/documents";
 import { isValidDateString } from "@/lib/date";
 import { humanizeAiError } from "@/lib/ai-errors";
 
@@ -30,10 +37,25 @@ export type ExtractState = {
 
 export type ImportState = { error?: string; ts: number };
 
-function isCsvFile(file: File): boolean {
-  return (
-    file.type.includes("csv") || file.name.toLowerCase().endsWith(".csv")
-  );
+/**
+ * Tables an Office document offers up, each as CSV, in the order we should try
+ * them. XLSX gives one per worksheet, DOCX one per table; the first that yields
+ * transactions wins, which handles a "Summary" sheet sitting in front of the
+ * real statement.
+ */
+async function tablesFrom(kind: UploadKind, bytes: Buffer): Promise<string[]> {
+  if (kind === "xlsx") return xlsxToCsvSheets(bytes);
+  if (kind === "docx") return docxToCsvTables(bytes);
+  return [];
+}
+
+/** First table that parses into at least one transaction. */
+function firstParsable(tables: string[]): ProposedRow[] {
+  for (const table of tables) {
+    const rows = parseCsvTransactions(table);
+    if (rows.length > 0) return rows;
+  }
+  return [];
 }
 
 /** Coerce whatever the model returned into clean ProposedRows. */
@@ -74,12 +96,18 @@ function normalizeRows(raw: unknown, categoryNames: string[]): ProposedRow[] {
 }
 
 /**
- * Read an uploaded report (CSV / PDF / image) and propose a transaction list.
- * This NEVER writes to the database — it only extracts. The user reviews and
- * confirms in the UI, then importTransactions performs the insert.
+ * Read an uploaded report and propose a transaction list. This NEVER writes to
+ * the database — it only extracts. The user reviews and confirms in the UI,
+ * then importTransactions performs the insert.
  *
- * AI path (Gemini Flash) is used when GEMINI_API_KEY is set; otherwise, and
- * for CSVs whenever the AI call fails, we fall back to deterministic parsing.
+ * Three routes in, cheapest first:
+ *   - CSV, XLSX and DOCX are read directly by lib/csv.ts. Free, instant, and
+ *     works with no API key.
+ *   - PDFs and photos go to Gemini as the original bytes, which it can read.
+ *   - An Office file with no recognisable table falls back to Gemini as TEXT,
+ *     since it cannot read the zipped XML those formats really are.
+ * A failed AI call on a CSV drops back to the deterministic parser rather than
+ * leaving the user stuck.
  */
 export async function extractTransactions(
   _prev: ExtractState,
@@ -99,8 +127,46 @@ export async function extractTransactions(
   const categoryNames = categories.map((c) => c.name);
 
   const bytes = Buffer.from(await file.arrayBuffer());
-  const csv = isCsvFile(file);
+  const kind = classifyUpload(file.name, file.type);
+  const csv = kind === "csv";
   const apiKey = process.env.GEMINI_API_KEY;
+
+  // XLSX and DOCX are usually just a table wearing a different file extension.
+  // Read it directly before considering the model: it is free, instant, and
+  // works with no API key at all.
+  if (kind === "xlsx" || kind === "docx") {
+    let tables: string[];
+    try {
+      tables = await tablesFrom(kind, bytes);
+    } catch {
+      return {
+        error: `That ${kind === "xlsx" ? "spreadsheet" : "document"} couldn't be opened. It may be password-protected, or saved in the older ${kind === "xlsx" ? ".xls" : ".doc"} format, which isn't supported.`,
+        ts,
+      };
+    }
+
+    const rows = firstParsable(tables);
+    if (rows.length > 0) {
+      return {
+        rows,
+        notice: `Read the table directly from your ${kind === "xlsx" ? "spreadsheet" : "document"}. Set a category for each row below.`,
+        aiUsed: false,
+        ts,
+      };
+    }
+
+    // No usable table. Hand the model text rather than the raw bytes — it
+    // cannot read the zipped XML that .xlsx and .docx actually are.
+    const text =
+      kind === "docx" ? await docxToText(bytes) : tables.join("\n\n");
+    if (!apiKey || !text.trim()) {
+      return {
+        error: `Couldn't find a transaction table in that ${kind === "xlsx" ? "spreadsheet" : "document"}. It needs a header row with date, amount (or debit/credit) and description columns.`,
+        ts,
+      };
+    }
+    return extractWithAi({ text }, categoryNames, ts);
+  }
 
   // No AI key: deterministic CSV only.
   if (!apiKey) {
@@ -128,7 +194,29 @@ export async function extractTransactions(
     };
   }
 
-  // AI path.
+  // AI path. apiKey is known to be set by here.
+  return extractWithAi(
+    { bytes, mimeType: file.type || "application/octet-stream" },
+    categoryNames,
+    ts,
+    csv ? bytes.toString("utf8") : undefined,
+  );
+}
+
+/**
+ * Ask the model for transactions, from either the raw file or text we already
+ * pulled out of it. `csvFallback` is the CSV source to reparse deterministically
+ * if the call fails (quota, outage), so a CSV user is never left stuck.
+ */
+async function extractWithAi(
+  input: { bytes?: Buffer; mimeType?: string; text?: string },
+  categoryNames: string[],
+  ts: number,
+  csvFallback?: string,
+): Promise<ExtractState> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return { error: "AI import isn't configured.", ts };
+
   try {
     const ai = new GoogleGenAI({ apiKey });
     const prompt =
@@ -143,13 +231,15 @@ export async function extractTransactions(
       `Rules: skip opening/closing balances, subtotals and summary lines. ` +
       `Only include real transactions. If the document has no transactions, return [].`;
 
-    const mimeType = file.type || (csv ? "text/csv" : "application/octet-stream");
+    const payload = input.text
+      ? createPartFromText(input.text)
+      : createPartFromBase64(
+          (input.bytes as Buffer).toString("base64"),
+          input.mimeType ?? "application/octet-stream",
+        );
     const response = await ai.models.generateContent({
       model: MODEL,
-      contents: createUserContent([
-        createPartFromText(prompt),
-        createPartFromBase64(bytes.toString("base64"), mimeType),
-      ]),
+      contents: createUserContent([createPartFromText(prompt), payload]),
       config: { responseMimeType: "application/json" },
     });
 
@@ -174,8 +264,8 @@ export async function extractTransactions(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     // On failure (e.g. quota), still try to help CSV users deterministically.
-    if (csv) {
-      const rows = parseCsvTransactions(bytes.toString("utf8"));
+    if (csvFallback !== undefined) {
+      const rows = parseCsvTransactions(csvFallback);
       if (rows.length > 0) {
         return {
           rows,

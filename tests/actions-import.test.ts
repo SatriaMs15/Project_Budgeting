@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import ExcelJS from "exceljs";
 import {
   createHarness,
   makeClient,
@@ -277,5 +280,124 @@ describe("extractTransactions — aiUsed flag", () => {
     const r = await extractTransactions(prev, fd);
     expect(r.aiUsed).toBe(false);
     expect(r.notice).not.toMatch(/\{/);
+  });
+});
+
+describe("extractTransactions — Office documents without an AI key", () => {
+  // The point of reading these directly: XLSX and DOCX are usually a table
+  // wearing a different extension, so they should cost nothing and work with
+  // no API key at all. GEMINI_API_KEY is deleted in beforeEach.
+
+  async function xlsx(
+    sheets: Record<string, (string | number)[][]>,
+    name = "statement.xlsx",
+    type = "",
+  ) {
+    const wb = new ExcelJS.Workbook();
+    for (const [sheetName, rows] of Object.entries(sheets)) {
+      const ws = wb.addWorksheet(sheetName);
+      for (const r of rows) ws.addRow(r);
+    }
+    const fd = new FormData();
+    fd.set("file", new File([await wb.xlsx.writeBuffer()], name, { type }));
+    return fd;
+  }
+
+  function docx(name = "statement.docx") {
+    const fd = new FormData();
+    const bytes = readFileSync(join(import.meta.dirname, "fixtures/statement.docx"));
+    fd.set("file", new File([bytes], name, { type: "" }));
+    return fd;
+  }
+
+  it("reads a spreadsheet with no AI call", async () => {
+    const r = await extractTransactions(
+      prev,
+      await xlsx({
+        Statement: [
+          ["Date", "Description", "Amount"],
+          ["2026-09-01", "Kopi", -45000],
+          ["2026-09-02", "Gaji", 8500000],
+        ],
+      }),
+    );
+    expect(r.error).toBeUndefined();
+    expect(r.rows).toHaveLength(2);
+    expect(r.aiUsed).toBe(false);
+    expect(r.notice).toMatch(/directly from your spreadsheet/i);
+  });
+
+  it("skips a summary sheet and finds the real statement", async () => {
+    const r = await extractTransactions(
+      prev,
+      await xlsx({
+        Summary: [["Opening balance"], ["12000000"]],
+        Transactions: [
+          ["Date", "Description", "Amount"],
+          ["2026-09-01", "Kopi", -45000],
+        ],
+      }),
+    );
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows![0]).toMatchObject({ amount: 45_000, kind: "expense" });
+  });
+
+  it("reads a Word document with no AI call", async () => {
+    const r = await extractTransactions(prev, docx());
+    expect(r.error).toBeUndefined();
+    expect(r.rows).toHaveLength(3);
+    expect(r.aiUsed).toBe(false);
+    expect(r.notice).toMatch(/directly from your document/i);
+  });
+
+  it("picks the transaction table over the summary table above it", async () => {
+    const r = await extractTransactions(prev, docx());
+    expect(r.rows!.map((x) => x.amount)).toEqual([45_000, 8_500_000, 32_000]);
+    expect(r.rows![1].kind).toBe("income");
+  });
+
+  it("recognises these by extension when the browser sends no MIME type", async () => {
+    // .xlsx routinely arrives as octet-stream; going by MIME type alone would
+    // send it to the model as unreadable zipped XML.
+    const r = await extractTransactions(
+      prev,
+      await xlsx(
+        { S: [["Date", "Description", "Amount"], ["2026-09-01", "Kopi", -45000]] },
+        "export.xlsx",
+        "application/octet-stream",
+      ),
+    );
+    expect(r.rows).toHaveLength(1);
+  });
+
+  it("explains a spreadsheet it cannot open", async () => {
+    const fd = new FormData();
+    fd.set("file", new File(["definitely not a zip"], "broken.xlsx", { type: "" }));
+    const r = await extractTransactions(prev, fd);
+    expect(r.error).toMatch(/couldn't be opened/i);
+    expect(r.error).toMatch(/\.xls\b/);
+  });
+
+  it("explains a spreadsheet with no transaction table", async () => {
+    const r = await extractTransactions(
+      prev,
+      await xlsx({ Notes: [["Just"], ["some"], ["prose"]] }),
+    );
+    expect(r.error).toMatch(/Couldn't find a transaction table/i);
+    expect(r.error).toMatch(/date, amount/i);
+  });
+
+  it("never reaches the AI for a table it can read itself", async () => {
+    // A key being present must not change the cheap path.
+    process.env.GEMINI_API_KEY = "test-key-should-not-be-used";
+    const r = await extractTransactions(
+      prev,
+      await xlsx({
+        S: [["Date", "Description", "Amount"], ["2026-09-01", "Kopi", -45000]],
+      }),
+    );
+    expect(r.aiUsed).toBe(false);
+    expect(r.rows).toHaveLength(1);
+    delete process.env.GEMINI_API_KEY;
   });
 });
