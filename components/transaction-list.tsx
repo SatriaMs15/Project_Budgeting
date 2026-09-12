@@ -20,9 +20,10 @@ function formatDate(iso: string) {
 
 const PAGE = 9;
 
-/** Shared column track, so header and rows always line up. */
+/** Shared column track, so header and rows always line up. Amount is sized
+ *  for the widest real figure — "−Rp 125.000.000" — not the common case. */
 const COLS =
-  "grid grid-cols-[92px_1fr_150px_130px_66px] gap-3 min-w-[560px]";
+  "grid grid-cols-[92px_1fr_150px_155px_66px] gap-3 min-w-[590px]";
 
 export function TransactionList({
   transactions,

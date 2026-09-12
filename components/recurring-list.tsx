@@ -14,8 +14,10 @@ function formatDate(iso: string) {
 }
 
 /** Shared column track for the recurring table's header and rows. */
+// Amount gets 155px: "−Rp 125.000.000" is 9 digits plus sign and symbol, and
+// at 130px it overran into the cadence column.
 const COLS =
-  "grid grid-cols-[1fr_130px_130px_110px_130px_60px] gap-3 min-w-[640px]";
+  "grid grid-cols-[1fr_130px_155px_110px_130px_60px] gap-3 min-w-[690px]";
 
 export function RecurringList({
   rules,

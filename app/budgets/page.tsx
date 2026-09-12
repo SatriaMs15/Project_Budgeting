@@ -5,8 +5,8 @@ import { monthStart, nextMonthStart, monthLabel } from "@/lib/date";
 import {
   BudgetRow,
   BUDGET_COLS,
-  budgetStatus,
   statusColor,
+  summarizeBudgets,
 } from "@/components/budget-row";
 import { formatIDR } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,21 +43,17 @@ export default async function BudgetsPage() {
     spentByCat.set(t.category_id, (spentByCat.get(t.category_id) ?? 0) + t.amount);
   }
 
-  const totalBudget = budgets.reduce((s, b) => s + b.limit_amount, 0);
-  const totalSpent = txns.reduce((s, t) => s + t.amount, 0);
-
-  const overCount = categories.filter(
-    (c) =>
-      budgetStatus(spentByCat.get(c.id) ?? 0, limitByCat.get(c.id) ?? 0) ===
-      "over",
-  ).length;
-
-  // The overall line takes the worst status among the categories, so a single
-  // blown budget is visible before you read any individual row.
-  const overallStatus = budgetStatus(totalSpent, totalBudget);
-  const overallColor = statusColor(overallStatus);
+  const summary = summarizeBudgets(
+    categories.map((c) => ({
+      spent: spentByCat.get(c.id) ?? 0,
+      limit: limitByCat.get(c.id) ?? 0,
+    })),
+  );
+  const overallColor = statusColor(summary.worst);
   const overallWidth =
-    totalBudget > 0 ? Math.min(100, (totalSpent / totalBudget) * 100) : 0;
+    summary.budgeted > 0
+      ? Math.min(100, (summary.spent / summary.budgeted) * 100)
+      : 0;
 
   return (
     <div>
@@ -72,19 +68,20 @@ export default async function BudgetsPage() {
             <p className="kicker">Overall</p>
             <span
               className="text-[13px] tabular-nums"
-              style={{ color: overallColor }}
+              style={{ color: summary.hasLimits ? overallColor : undefined }}
             >
-              {formatIDR(totalSpent)}
-              {totalBudget > 0
-                ? ` of ${formatIDR(totalBudget)} budgeted`
-                : " spent · no limits set"}
+              {summary.hasLimits
+                ? `${formatIDR(summary.spent)} of ${formatIDR(summary.budgeted)} budgeted`
+                : "No limits set yet"}
             </span>
           </div>
 
           <p className="mb-3.5 text-[12.5px] text-muted-foreground">
-            {overCount > 0
-              ? `${overCount} categor${overCount === 1 ? "y" : "ies"} over budget`
-              : "All categories within budget"}
+            {!summary.hasLimits
+              ? "Set a limit on any category to start tracking against it."
+              : summary.overCount > 0
+                ? `${summary.overCount} categor${summary.overCount === 1 ? "y" : "ies"} over budget`
+                : "All categories within budget"}
           </p>
 
           <div className="mb-5 h-1 overflow-hidden rounded-sm bg-divider">

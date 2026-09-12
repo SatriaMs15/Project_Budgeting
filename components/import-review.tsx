@@ -16,7 +16,7 @@ const initialState: ImportState = { ts: 0 };
 
 /** Shared column track for the review table's header and rows. */
 const COLS =
-  "grid grid-cols-[100px_1fr_130px_110px_160px_70px] gap-3 min-w-[660px]";
+  "grid grid-cols-[100px_1fr_150px_110px_160px_70px] gap-3 min-w-[680px]";
 
 type RowState = ProposedRow & { key: number };
 
