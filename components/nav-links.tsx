@@ -11,6 +11,7 @@ const links = [
   { href: "/goals", label: "Goals" },
   { href: "/recurring", label: "Recurring" },
   { href: "/import", label: "Import" },
+  { href: "/account", label: "Account" },
 ];
 
 export function NavLinks() {

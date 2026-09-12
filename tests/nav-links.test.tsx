@@ -20,6 +20,7 @@ describe("NavLinks", () => {
       "Goals",
       "Recurring",
       "Import",
+      "Account",
     ]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }

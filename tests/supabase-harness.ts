@@ -22,11 +22,18 @@ export type HarnessState = {
   data: Record<string, unknown>;
   /** Force an error for a given "table.op", e.g. "transactions.insert". */
   errors: Record<string, { message: string; code?: string }>;
-  user: { id: string; user_metadata?: Record<string, unknown> } | null;
+  user: {
+    id: string;
+    email?: string | null;
+    user_metadata?: Record<string, unknown>;
+  } | null;
   /** Payloads passed to auth.updateUser, so a test can assert what was stored. */
   authUpdates: { data?: Record<string, unknown> }[];
   /** How many times auth.getUser was called — lets a test pin the query cost. */
   authReads: number;
+  /** Credentials passed to signInWithPassword, and whether signOut ran. */
+  signIns: { email: string; password: string }[];
+  signedOut: boolean;
 };
 
 export function createHarness(): HarnessState {
@@ -37,6 +44,8 @@ export function createHarness(): HarnessState {
     user: { id: "user-1", user_metadata: {} },
     authUpdates: [],
     authReads: 0,
+    signIns: [],
+    signedOut: false,
   };
 }
 
@@ -123,15 +132,40 @@ export function makeClient(state: HarnessState) {
         state.authReads += 1;
         return { data: { user: state.user }, error: null };
       },
-      updateUser: async (attrs: { data?: Record<string, unknown> }) => {
+      signInWithPassword: async (creds: { email: string; password: string }) => {
+        state.signIns.push(creds);
+        const error = state.errors["auth.signInWithPassword"];
+        if (error) return { data: { user: null, session: null }, error };
+        state.user = { id: "user-signed-in", email: creds.email };
+        return { data: { user: state.user, session: {} }, error: null };
+      },
+      signOut: async () => {
+        state.signedOut = true;
+        state.user = null;
+        return { error: null };
+      },
+      updateUser: async (
+        attrs: { data?: Record<string, unknown>; email?: string; password?: string },
+      ) => {
         state.authUpdates.push(attrs);
-        const error = state.errors["auth.updateUser"];
+        // claimAccount calls updateUser twice — password, then email — so a
+        // test needs to fail one without failing the other.
+        const specific = attrs.email
+          ? "auth.updateUser.email"
+          : attrs.password
+            ? "auth.updateUser.password"
+            : "auth.updateUser.data";
+        const error = state.errors[specific] ?? state.errors["auth.updateUser"];
         if (error) return { data: { user: null }, error };
         if (state.user) {
-          state.user.user_metadata = {
-            ...(state.user.user_metadata ?? {}),
-            ...(attrs.data ?? {}),
-          };
+          if (attrs.data) {
+            state.user.user_metadata = {
+              ...(state.user.user_metadata ?? {}),
+              ...attrs.data,
+            };
+          }
+          // The real API only attaches the address once confirmed, so the
+          // harness leaves `email` alone here too.
         }
         return { data: { user: state.user }, error: null };
       },
