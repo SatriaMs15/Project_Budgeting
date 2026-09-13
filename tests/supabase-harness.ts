@@ -31,6 +31,8 @@ export type HarnessState = {
   authUpdates: { data?: Record<string, unknown> }[];
   /** How many times auth.getUser was called — lets a test pin the query cost. */
   authReads: number;
+  /** Other auth calls, so a test can assert which path a handler took. */
+  authCalls: Record<string, unknown>[];
   /** Credentials passed to signInWithPassword, and whether signOut ran. */
   signIns: { email: string; password: string }[];
   signedOut: boolean;
@@ -44,6 +46,7 @@ export function createHarness(): HarnessState {
     user: { id: "user-1", user_metadata: {} },
     authUpdates: [],
     authReads: 0,
+    authCalls: [],
     signIns: [],
     signedOut: false,
   };
@@ -138,6 +141,20 @@ export function makeClient(state: HarnessState) {
         if (error) return { data: { user: null, session: null }, error };
         state.user = { id: "user-signed-in", email: creds.email };
         return { data: { user: state.user, session: {} }, error: null };
+      },
+      verifyOtp: async (args: { type: string; token_hash: string }) => {
+        state.authCalls.push({ method: "verifyOtp", ...args });
+        const error = state.errors["auth.verifyOtp"];
+        return error
+          ? { data: { user: null, session: null }, error }
+          : { data: { user: state.user, session: {} }, error: null };
+      },
+      exchangeCodeForSession: async (code: string) => {
+        state.authCalls.push({ method: "exchangeCodeForSession", code });
+        const error = state.errors["auth.exchangeCodeForSession"];
+        return error
+          ? { data: { user: null, session: null }, error }
+          : { data: { user: state.user, session: {} }, error: null };
       },
       signOut: async () => {
         state.signedOut = true;
