@@ -50,9 +50,9 @@ async function tablesFrom(kind: UploadKind, bytes: Buffer): Promise<string[]> {
 }
 
 /** First table that parses into at least one transaction. */
-function firstParsable(tables: string[]): ProposedRow[] {
+function firstParsable(tables: string[], categoryNames: string[]): ProposedRow[] {
   for (const table of tables) {
-    const rows = parseCsvTransactions(table);
+    const rows = parseCsvTransactions(table, categoryNames);
     if (rows.length > 0) return rows;
   }
   return [];
@@ -145,7 +145,7 @@ export async function extractTransactions(
       };
     }
 
-    const rows = firstParsable(tables);
+    const rows = firstParsable(tables, categoryNames);
     if (rows.length > 0) {
       return {
         rows,
@@ -177,7 +177,7 @@ export async function extractTransactions(
         ts,
       };
     }
-    const rows = parseCsvTransactions(bytes.toString("utf8"));
+    const rows = parseCsvTransactions(bytes.toString("utf8"), categoryNames);
     if (rows.length === 0) {
       return {
         error:
@@ -265,7 +265,7 @@ async function extractWithAi(
     const message = err instanceof Error ? err.message : "Unknown error";
     // On failure (e.g. quota), still try to help CSV users deterministically.
     if (csvFallback !== undefined) {
-      const rows = parseCsvTransactions(csvFallback);
+      const rows = parseCsvTransactions(csvFallback, categoryNames);
       if (rows.length > 0) {
         return {
           rows,

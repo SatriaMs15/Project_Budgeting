@@ -202,3 +202,82 @@ describe("parseCsvTransactions — output contract", () => {
     expect(rows).toHaveLength(2);
   });
 });
+
+describe("parseCsvTransactions — type and category columns", () => {
+  const names = ["Food & Drink", "Salary", "Bills"];
+  const csv = (rows: string) =>
+    `date,description,amount,type,category\n${rows}`;
+
+  it("takes direction from an explicit type column", () => {
+    const rows = parseCsvTransactions(
+      csv("2026-09-01,Kopi,45000,expense,Food & Drink"),
+      names,
+    );
+    expect(rows[0].kind).toBe("expense");
+  });
+
+  it("lets the type column override what the sign would have said", () => {
+    // A bare positive number reads as income without a type column.
+    const withType = parseCsvTransactions(csv("2026-09-01,Kopi,45000,expense,"), names);
+    const withoutType = parseCsvTransactions(
+      "date,description,amount\n2026-09-01,Kopi,45000",
+    );
+    expect(withType[0].kind).toBe("expense");
+    expect(withoutType[0].kind).toBe("income");
+  });
+
+  it.each([
+    ["income", "income"],
+    ["Income", "income"],
+    ["masuk", "income"],
+    ["pemasukan", "income"],
+    ["expense", "expense"],
+    ["EXPENSE", "expense"],
+    ["keluar", "expense"],
+    ["pengeluaran", "expense"],
+  ])("reads %s as %s", (written, expected) => {
+    const rows = parseCsvTransactions(csv(`2026-09-01,X,1000,${written},`), names);
+    expect(rows[0].kind).toBe(expected);
+  });
+
+  it("falls back to the sign when the type cell is unrecognised", () => {
+    const rows = parseCsvTransactions(csv("2026-09-01,X,-1000,sideways,"), names);
+    expect(rows[0].kind).toBe("expense");
+  });
+
+  it("matches a known category case- and space-insensitively", () => {
+    const rows = parseCsvTransactions(
+      csv("2026-09-01,Kopi,1000,expense,  FOOD & drink "),
+      names,
+    );
+    expect(rows[0].suggested_category).toBe("Food & Drink");
+  });
+
+  it("drops an unknown category rather than inventing one", () => {
+    const rows = parseCsvTransactions(csv("2026-09-01,Kopi,1000,expense,Nope"), names);
+    expect(rows[0].suggested_category).toBe("");
+  });
+
+  it("leaves the category blank when no names are supplied", () => {
+    const rows = parseCsvTransactions(csv("2026-09-01,Kopi,1000,expense,Bills"));
+    expect(rows[0].suggested_category).toBe("");
+  });
+
+  it("reads the Indonesian header names too", () => {
+    const rows = parseCsvTransactions(
+      "tanggal,keterangan,jumlah,jenis,kategori\n2026-09-01,Kopi,1000,keluar,Bills",
+      names,
+    );
+    expect(rows[0]).toMatchObject({ kind: "expense", suggested_category: "Bills" });
+  });
+
+  it("still parses a statement that has neither column", () => {
+    // The ordinary bank-export case must be untouched by any of this.
+    const rows = parseCsvTransactions(
+      "date,description,debit,credit\n2026-09-01,Kopi,45000,\n2026-09-02,Gaji,,8500000",
+      names,
+    );
+    expect(rows.map((r) => r.kind)).toEqual(["expense", "income"]);
+    expect(rows.every((r) => r.suggested_category === "")).toBe(true);
+  });
+});

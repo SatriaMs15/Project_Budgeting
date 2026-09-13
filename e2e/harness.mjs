@@ -119,13 +119,19 @@ export const go = (page, path) =>
 /**
  * Parse every "Rp 1,234,567" in a string into numbers.
  *
- * Accepts both grouping conventions and strips either separator, so the suite
- * keeps working whichever locale lib/locale.ts is set to. Safe because IDR has
- * no minor unit — there is never a decimal part to lose. (`\s` matches the
- * U+00A0 that Intl puts after "Rp".)
+ * The pattern stops at COMPLETE digit groups on purpose. textContent runs
+ * elements together with no separator, so on the dashboard an amount is
+ * followed immediately by the next row's rank: "Rp 2,331,00002Food & Drink".
+ * A greedy `[\d.,]+` swallowed that "02" and reported a sum a hundred times
+ * too large — a failure in the harness that looked exactly like a bug in the
+ * app's arithmetic.
+ *
+ * Accepts either grouping convention, so the suite survives lib/locale.ts being
+ * switched. Safe because IDR has no minor unit — there is never a decimal part
+ * to lose. (`\s` matches the U+00A0 that Intl puts after "Rp".)
  */
 export const rupiah = (text) =>
-  [...text.matchAll(/Rp\s*([\d.,]+)/g)].map((m) =>
+  [...text.matchAll(/Rp\s*(\d{1,3}(?:[.,]\d{3})*)/g)].map((m) =>
     Number(m[1].replace(/[.,]/g, "")),
   );
 

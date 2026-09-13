@@ -101,8 +101,20 @@ function parseDate(raw: string): string {
  * signed "amount" column or separate debit/credit columns, plus a date and a
  * description column, under a range of English/Indonesian header names.
  * Rows without a usable amount are skipped.
+ *
+ * A "type" and a "category" column are used when present — which is how the
+ * downloadable template carries information a bank export cannot. Without
+ * them, direction is inferred from the sign and every row arrives
+ * uncategorised, which is what any ordinary statement gives us.
+ *
+ * `knownCategories` is matched case-insensitively; a name that is not on the
+ * list is dropped rather than guessed at, so the review screen shows it as
+ * Uncategorized instead of quietly filing it somewhere wrong.
  */
-export function parseCsvTransactions(text: string): ProposedRow[] {
+export function parseCsvTransactions(
+  text: string,
+  knownCategories: string[] = [],
+): ProposedRow[] {
   const lines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
@@ -126,6 +138,10 @@ export function parseCsvTransactions(text: string): ProposedRow[] {
   const amountCol = findColumn(headers, ["amount", "jumlah", "nominal", "value"]);
   const debitCol = findColumn(headers, ["debit", "debet", "keluar"]);
   const creditCol = findColumn(headers, ["credit", "kredit", "masuk"]);
+  const typeCol = findColumn(headers, ["type", "kind", "jenis", "arah"]);
+  const categoryCol = findColumn(headers, ["category", "kategori"]);
+
+  const byName = new Map(knownCategories.map((n) => [n.trim().toLowerCase(), n]));
 
   const rows: ProposedRow[] = [];
   for (let i = 1; i < lines.length; i++) {
@@ -151,6 +167,20 @@ export function parseCsvTransactions(text: string): ProposedRow[] {
       kind = negative ? "expense" : "income";
     }
 
+    // An explicit type column beats anything inferred from a sign.
+    if (typeCol >= 0) {
+      const stated = at(typeCol).trim().toLowerCase();
+      if (stated.startsWith("income") || stated === "masuk" || stated === "pemasukan") {
+        kind = "income";
+      } else if (
+        stated.startsWith("expense") ||
+        stated === "keluar" ||
+        stated === "pengeluaran"
+      ) {
+        kind = "expense";
+      }
+    }
+
     if (amount <= 0) continue;
 
     rows.push({
@@ -158,7 +188,10 @@ export function parseCsvTransactions(text: string): ProposedRow[] {
       note: at(descCol),
       amount,
       kind,
-      suggested_category: "",
+      suggested_category:
+        categoryCol >= 0
+          ? (byName.get(at(categoryCol).trim().toLowerCase()) ?? "")
+          : "",
     });
   }
   return rows;

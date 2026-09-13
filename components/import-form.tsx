@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { AlertTriangle, Loader2, UploadCloud } from "lucide-react";
+import { AlertTriangle, Download, Loader2, UploadCloud } from "lucide-react";
 import { extractTransactions, type ExtractState } from "@/app/actions/import";
 import { ImportReview } from "@/components/import-review";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { CHART } from "@/lib/chart-colors";
 import type { Category } from "@/lib/supabase/types";
 import { MAX_UPLOAD_MB } from "@/lib/upload-limits";
@@ -164,6 +164,27 @@ export function ImportForm({ categories }: { categories: Category[] }) {
       >
         Browse files
       </Button>
+
+      {/* The second way in, inside the dropzone rather than beside it: the
+          template is what you upload, so it belongs where uploading happens.
+          A plain link, not a button — it is a GET that returns a file, and a
+          link keeps "save as" and middle-click working. */}
+      <div className="mx-auto mt-8 max-w-[440px] rounded border border-divider bg-card p-4 text-left">
+        <p className="kicker mb-1.5">Don&apos;t have a statement file?</p>
+        <p className="mb-3 text-[12.5px] text-muted-foreground">
+          Download a spreadsheet already set up with your own categories, fill
+          in the rows, and upload it here. It is read exactly as written — no
+          guessing at columns — and you still review everything before it saves.
+        </p>
+        <a
+          href="/api/template"
+          download
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          <Download className="size-[13px]" strokeWidth={1.75} />
+          Download template
+        </a>
+      </div>
     </form>
   );
 }
