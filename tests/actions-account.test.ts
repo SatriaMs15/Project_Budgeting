@@ -16,9 +16,8 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => makeClient(h.state),
 }));
 
-const { claimAccount, signInToAccount, signOutOfAccount } = await import(
-  "@/app/actions/account"
-);
+const { claimAccount, setAccountPassword, signInToAccount, signOutOfAccount } =
+  await import("@/app/actions/account");
 
 const prev = { ts: 0 };
 const good = { email: "me@example.com", password: "correct-horse" };
@@ -35,63 +34,82 @@ describe("claimAccount — input", () => {
     ["not an address", "nope"],
     ["empty", ""],
   ])("rejects a %s email", async (_label, email) => {
-    const r = await claimAccount(prev, form({ ...good, email }));
+    const r = await claimAccount(prev, form({ email }));
     expect(r.error).toBe("Enter a valid email address.");
     expect(updates()).toHaveLength(0);
   });
 
-  it("rejects a password under 8 characters", async () => {
-    const r = await claimAccount(prev, form({ ...good, password: "short" }));
-    expect(r.error).toMatch(/at least 8 characters/);
-    expect(updates()).toHaveLength(0);
-  });
-
   it("lowercases and trims the address", async () => {
-    await claimAccount(prev, form({ ...good, email: "  ME@Example.COM  " }));
-    expect(updates().some((u) => u.email === "me@example.com")).toBe(true);
+    await claimAccount(prev, form({ email: "  ME@Example.COM  " }));
+    expect(updates()[0]).toMatchObject({ email: "me@example.com" });
   });
 });
 
 describe("claimAccount — what it sends", () => {
-  it("sets the password before asking for the email", async () => {
-    // One email is all Supabase's built-in sender allows twice an hour, so the
-    // password must not need a second round trip after confirmation.
-    await claimAccount(prev, form(good));
-    expect(updates()).toHaveLength(2);
-    expect(updates()[0]).toHaveProperty("password");
-    expect(updates()[1]).toHaveProperty("email");
-  });
-
-  it("never sends the password and email in one call", async () => {
-    await claimAccount(prev, form(good));
-    for (const u of updates()) {
-      expect("password" in u && "email" in u).toBe(false);
-    }
+  it("asks for the email ONLY, never a password", async () => {
+    // Supabase refuses to set a password on an anonymous user that has no
+    // email yet: "Updating password of an anonymous user without an email or
+    // phone is not allowed". Sending one here fails the whole claim.
+    await claimAccount(prev, form({ email: good.email }));
+    expect(updates()).toHaveLength(1);
+    expect(updates()[0]).not.toHaveProperty("password");
+    expect(updates()[0]).toHaveProperty("email");
   });
 
   it("tells the user to go and check that address", async () => {
-    const r = await claimAccount(prev, form(good));
+    const r = await claimAccount(prev, form({ email: good.email }));
     expect(r.error).toBeUndefined();
     expect(r.notice).toContain("me@example.com");
   });
 
   it("reassures that the ledger is untouched either way", async () => {
-    const r = await claimAccount(prev, form(good));
+    const r = await claimAccount(prev, form({ email: good.email }));
     expect(r.notice).toMatch(/unchanged/i);
+  });
+});
+
+describe("setAccountPassword", () => {
+  it("sets the password once the address is confirmed", async () => {
+    h.state.user = { id: "u1", email: "me@example.com" };
+    const r = await setAccountPassword(prev, form({ password: "adminadmin" }));
+    expect(r.error).toBeUndefined();
+    expect(updates()[0]).toMatchObject({ password: "adminadmin" });
+  });
+
+  it("refuses before there is a confirmed address", async () => {
+    // This is the order Supabase actually enforces; getting it wrong is what
+    // the first version of this flow did.
+    h.state.user = { id: "u1", email: null };
+    const r = await setAccountPassword(prev, form({ password: "adminadmin" }));
+    expect(r.error).toMatch(/Confirm your email address first/);
+    expect(updates()).toHaveLength(0);
+  });
+
+  it("rejects a password under 8 characters", async () => {
+    h.state.user = { id: "u1", email: "me@example.com" };
+    const r = await setAccountPassword(prev, form({ password: "short" }));
+    expect(r.error).toMatch(/at least 8 characters/);
+    expect(updates()).toHaveLength(0);
+  });
+
+  it("sends no email, so the flow still costs only one", async () => {
+    h.state.user = { id: "u1", email: "me@example.com" };
+    await setAccountPassword(prev, form({ password: "adminadmin" }));
+    expect(updates()[0]).not.toHaveProperty("email");
   });
 });
 
 describe("claimAccount — refusals", () => {
   it("refuses when there is no session to save", async () => {
     h.state.user = null;
-    const r = await claimAccount(prev, form(good));
+    const r = await claimAccount(prev, form({ email: good.email }));
     expect(r.error).toMatch(/No session to save/);
     expect(updates()).toHaveLength(0);
   });
 
   it("refuses when this ledger is already saved", async () => {
     h.state.user = { id: "u1", email: "taken@example.com" };
-    const r = await claimAccount(prev, form(good));
+    const r = await claimAccount(prev, form({ email: good.email }));
     expect(r.error).toContain("taken@example.com");
     expect(updates()).toHaveLength(0);
   });
@@ -100,20 +118,9 @@ describe("claimAccount — refusals", () => {
     h.state.errors["auth.updateUser.email"] = {
       message: "A user with this email address has already been registered",
     };
-    const r = await claimAccount(prev, form(good));
+    const r = await claimAccount(prev, form({ email: good.email }));
     expect(r.error).toMatch(/already used by another ledger/i);
     expect(r.error).toMatch(/Sign in to that one instead/i);
-  });
-});
-
-describe("claimAccount — a failed password step", () => {
-  it("does not go on to send a confirmation email", async () => {
-    // Otherwise the user confirms an address for a ledger they then cannot
-    // sign in to, having no password.
-    h.state.errors["auth.updateUser.password"] = { message: "Password is too weak" };
-    const r = await claimAccount(prev, form(good));
-    expect(r.error).toBe("Password is too weak");
-    expect(updates().some((u) => u.email)).toBe(false);
   });
 });
 

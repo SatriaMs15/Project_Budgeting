@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import {
   claimAccount,
+  setAccountPassword,
   signInToAccount,
   signOutOfAccount,
   type AccountState,
@@ -57,15 +58,56 @@ function Credentials({ idPrefix, autoComplete }: { idPrefix: string; autoComplet
   );
 }
 
-/** Attach an email to the anonymous ledger this browser already holds. */
+/**
+ * Attach an email to the anonymous ledger this browser already holds.
+ *
+ * Email only: Supabase will not set a password on an anonymous user until it
+ * has a confirmed address, so the password is a separate step afterwards.
+ */
 export function ClaimForm() {
   const [state, action, pending] = useActionState(claimAccount, initial);
   return (
     <form action={action} className="grid gap-3.5">
-      <Credentials idPrefix="claim" autoComplete="new-password" />
+      <div className="grid gap-1.5">
+        <Label htmlFor="claim-email" className={labelClass}>
+          Email
+        </Label>
+        <Input
+          id="claim-email"
+          name="email"
+          type="email"
+          autoComplete="username"
+          required
+        />
+      </div>
       <Message state={state} />
       <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "Saving…" : "Save this ledger"}
+        {pending ? "Sending…" : "Save this ledger"}
+      </Button>
+    </form>
+  );
+}
+
+/** Set the password the other devices will sign in with. */
+export function PasswordForm() {
+  const [state, action, pending] = useActionState(setAccountPassword, initial);
+  return (
+    <form action={action} className="grid gap-3.5">
+      <div className="grid gap-1.5">
+        <Label htmlFor="set-password" className={labelClass}>
+          Password
+        </Label>
+        <Input
+          id="set-password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          required
+        />
+      </div>
+      <Message state={state} />
+      <Button type="submit" disabled={pending} className="w-full">
+        {pending ? "Saving…" : "Set password"}
       </Button>
     </form>
   );

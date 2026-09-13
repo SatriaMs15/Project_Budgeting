@@ -4,27 +4,46 @@ import userEvent from "@testing-library/user-event";
 
 vi.mock("@/app/actions/account", () => ({
   claimAccount: vi.fn(),
+  setAccountPassword: vi.fn(),
   signInToAccount: vi.fn(),
   signOutOfAccount: vi.fn(),
 }));
 
-const { ClaimForm, SignInForm, SignOutButton } = await import(
+const { ClaimForm, PasswordForm, SignInForm, SignOutButton } = await import(
   "@/components/account-panel"
 );
 
 describe("ClaimForm", () => {
-  it("asks for an email and a password", () => {
+  it("asks for an email", () => {
     render(<ClaimForm />);
     expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");
+  });
+
+  it("asks for NO password", () => {
+    // Supabase refuses to set one on an anonymous user with no email yet, so
+    // collecting it here would only fail the whole claim.
+    render(<ClaimForm />);
+    expect(screen.queryByLabelText("Password")).toBeNull();
+  });
+});
+
+describe("PasswordForm", () => {
+  it("asks for a password", () => {
+    render(<PasswordForm />);
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
   });
 
   it("hints a new password to the browser's password manager", () => {
-    render(<ClaimForm />);
+    render(<PasswordForm />);
     expect(screen.getByLabelText("Password")).toHaveAttribute(
       "autoComplete",
       "new-password",
     );
+  });
+
+  it("asks for no email, since the address is already attached by then", () => {
+    render(<PasswordForm />);
+    expect(screen.queryByLabelText("Email")).toBeNull();
   });
 });
 

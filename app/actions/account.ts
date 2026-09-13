@@ -27,65 +27,85 @@ function readCredentials(formData: FormData) {
   };
 }
 
-function invalid(email: string, password: string): string | null {
-  if (!email || !email.includes("@")) return "Enter a valid email address.";
-  if (password.length < MIN_PASSWORD) {
-    return `Use a password of at least ${MIN_PASSWORD} characters.`;
-  }
-  return null;
-}
-
 /**
- * Attach an email and password to the anonymous account this browser is
- * already using, so the same ledger can be opened on another device.
+ * Attach an email to the anonymous account this browser is already using, so
+ * the same ledger can be reopened on another device.
  *
  * The account keeps its user id, which is the whole point: every transaction,
  * budget and goal is tied to that id, so linking an identity carries the
  * existing data with it rather than starting something new alongside it.
  *
- * The password is set first, and deliberately: it needs no email round trip, so
- * once the address is confirmed the other devices can sign in immediately. The
- * alternative — confirm, then come back and set a password — spends a second
- * email, and Supabase's built-in sender allows only two an hour.
+ * Email only, and the password comes later on purpose. Supabase refuses to set
+ * a password on an anonymous user that has no email or phone yet — "Updating
+ * password of an anonymous user without an email or phone is not allowed" — so
+ * the address has to be confirmed first. That still costs exactly one email:
+ * setting a password afterwards sends nothing.
  */
 export async function claimAccount(
   _prev: AccountState,
   formData: FormData,
 ): Promise<AccountState> {
-  const { email, password } = readCredentials(formData);
-  const problem = invalid(email, password);
-  if (problem) return fail(problem);
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  if (!email || !email.includes("@")) return fail("Enter a valid email address.");
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return fail("No session to save. Reload the page and try again.");
-  if (user.email) {
-    return fail(`This ledger is already saved to ${user.email}.`);
-  }
+  if (user.email) return fail(`This ledger is already saved to ${user.email}.`);
 
-  const passwordSet = await supabase.auth.updateUser({ password });
-  if (passwordSet.error) return fail(passwordSet.error.message);
-
-  const emailSet = await supabase.auth.updateUser(
+  const { error } = await supabase.auth.updateUser(
     { email },
     { emailRedirectTo: await confirmUrl() },
   );
-  if (emailSet.error) {
+  if (error) {
     // The most common failure by far, and the one worth naming: that address
     // already belongs to another ledger.
-    if (/already/i.test(emailSet.error.message)) {
+    if (/already/i.test(error.message)) {
       return fail(
         `${email} is already used by another ledger. Sign in to that one instead, or use a different address.`,
       );
     }
-    return fail(emailSet.error.message);
+    return fail(error.message);
   }
 
   revalidatePath("/account");
   return {
     notice: `Check ${email} for a confirmation link. Your ledger is unchanged either way — confirming is what lets you open it on another device.`,
+    ts: Date.now(),
+  };
+}
+
+/**
+ * Set the password used to sign in on other devices.
+ *
+ * Only possible once the address is confirmed, per the constraint above. This
+ * sends no email, so the whole flow still costs one.
+ */
+export async function setAccountPassword(
+  _prev: AccountState,
+  formData: FormData,
+): Promise<AccountState> {
+  const password = String(formData.get("password") ?? "");
+  if (password.length < MIN_PASSWORD) {
+    return fail(`Use a password of at least ${MIN_PASSWORD} characters.`);
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) {
+    return fail("Confirm your email address first, then set a password.");
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return fail(error.message);
+
+  revalidatePath("/account");
+  return {
+    notice: "Password set. You can now sign in to this ledger on another device.",
     ts: Date.now(),
   };
 }

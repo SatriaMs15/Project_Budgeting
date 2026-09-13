@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { unwrap } from "@/lib/supabase/unwrap";
 import {
   ClaimForm,
+  PasswordForm,
   SignInForm,
   SignOutButton,
 } from "@/components/account-panel";
@@ -77,9 +78,9 @@ export default async function AccountPage({
                 <p className="kicker mb-2.5">Save this ledger</p>
                 <p className="mb-4 text-[13px] text-muted-foreground">
                   Everything you have entered here stays exactly as it is. An
-                  email and password simply give it a way back, so the same
-                  ledger opens on your phone, laptop and desktop instead of each
-                  keeping its own.
+                  email simply gives it a way back, so the same ledger opens on
+                  your phone, laptop and desktop instead of each keeping its
+                  own. You will set a password once the address is confirmed.
                 </p>
                 <ClaimForm />
               </>
@@ -87,7 +88,18 @@ export default async function AccountPage({
           </CardContent>
         </Card>
 
-        {!saved && (
+        {saved ? (
+          <Card className="elev-sm">
+            <CardContent>
+              <p className="kicker mb-2.5">Password</p>
+              <p className="mb-4 text-[13px] text-muted-foreground">
+                This is what your other devices sign in with. Setting it sends
+                no email, and you can change it here at any time.
+              </p>
+              <PasswordForm />
+            </CardContent>
+          </Card>
+        ) : (
           <Card className="elev-sm">
             <CardContent>
               <p className="kicker mb-2.5">Already saved one?</p>
